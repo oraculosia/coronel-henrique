@@ -1,0 +1,33 @@
+# Ambiente virtual
+.venv/
+venv/
+
+# Segredos
+.env
+.streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+
+# Streamlit
+.streamlit/
+
+# IDE e sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Dados e uploads locais
+src/images/usuarios/*
+src/images/apoiadores/*
+!src/images/usuarios/.gitkeep
+!src/images/apoiadores/.gitkeep
+
+# Logs
+*.log
+logs/

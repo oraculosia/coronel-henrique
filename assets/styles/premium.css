@@ -1,0 +1,93 @@
+:root {
+    --bg-primary: #070a14;
+    --bg-secondary: #0d1325;
+    --surface: rgba(18, 28, 53, 0.72);
+    --surface-hover: rgba(26, 41, 75, 0.86);
+    --text-primary: #f8fafc;
+    --text-muted: #a8b3c7;
+    --cyan: #7ef9ff;
+    --purple: #a855f7;
+    --green: #3bf3a5;
+    --border: rgba(126, 249, 255, 0.22);
+}
+
+.stApp {
+    background:
+        radial-gradient(circle at 12% 10%, rgba(168, 85, 247, 0.22), transparent 30%),
+        radial-gradient(circle at 88% 14%, rgba(126, 249, 255, 0.16), transparent 32%),
+        linear-gradient(145deg, var(--bg-primary), var(--bg-secondary));
+    color: var(--text-primary);
+}
+
+.block-container {
+    max-width: 1280px;
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+}
+
+.campaign-hero {
+    padding: 2.5rem;
+    margin: 1rem 0 1.5rem 0;
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    background: linear-gradient(
+        135deg,
+        rgba(126, 249, 255, 0.12),
+        rgba(168, 85, 247, 0.15)
+    );
+    box-shadow: 0 0 32px rgba(126, 249, 255, 0.10);
+}
+
+.campaign-hero h1 {
+    margin-bottom: 0.45rem;
+    color: var(--text-primary);
+    font-size: clamp(2rem, 5vw, 3.8rem);
+}
+
+.campaign-hero p {
+    color: var(--text-muted);
+    font-size: 1.08rem;
+}
+
+.neon-card {
+    min-height: 145px;
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: var(--surface);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.24);
+    transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.neon-card:hover {
+    transform: translateY(-4px);
+    background: var(--surface-hover);
+    box-shadow:
+        0 0 22px rgba(126, 249, 255, 0.15),
+        0 18px 42px rgba(0, 0, 0, 0.32);
+}
+
+.neon-card h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--cyan);
+}
+
+.neon-card p {
+    color: var(--text-muted);
+}
+
+.stButton > button {
+    min-height: 45px;
+    border: 1px solid rgba(126, 249, 255, 0.55);
+    border-radius: 12px;
+    background: linear-gradient(135deg, #7e22ce, #0891b2);
+    color: #ffffff;
+    font-weight: 700;
+    transition: all 180ms ease;
+}
+
+.stButton > button:hover {
+    transform: scale(1.02);
+    border-color: var(--cyan);
+    box-shadow: 0 0 20px rgba(126, 249, 255, 0.35);
+}

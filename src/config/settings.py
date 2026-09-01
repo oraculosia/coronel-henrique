@@ -1,0 +1,38 @@
+from pathlib import Path
+import os
+
+from dotenv import load_dotenv
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+load_dotenv(ROOT_DIR / ".env")
+
+
+class Settings:
+    APP_ENV = os.getenv("APP_ENV", "development")
+    APP_NAME = os.getenv("APP_NAME", "Campanha 2026")
+    APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8501")
+
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+    SUPABASE_PUBLISHABLE_KEY = os.getenv("SUPABASE_PUBLISHABLE_KEY", "")
+    SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+    GROQ_MODEL = os.getenv("GROQ_MODEL", "")
+
+    USUARIO_AGENTE = os.getenv("USUARIO_AGENTE", "")
+    TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+    TELEGRAM_WEBHOOK_URL = os.getenv("TELEGRAM_WEBHOOK_URL", "")
+
+    PROFILE_IMAGE_DIR = ROOT_DIR / os.getenv(
+        "PROFILE_IMAGE_DIR",
+        "src/images/usuarios",
+    )
+    SUPPORTER_IMAGE_DIR = ROOT_DIR / os.getenv(
+        "SUPPORTER_IMAGE_DIR",
+        "src/images/apoiadores",
+    )
+    MAX_IMAGE_SIZE_MB = int(os.getenv("MAX_IMAGE_SIZE_MB", "3"))
+
+
+settings = Settings()
