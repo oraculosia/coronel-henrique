@@ -97,7 +97,9 @@ knowledge_page = st.Page(
 
 def build_navigation() -> dict[str, list[st.Page]]:
     # Roteáveis por link direto (pós-cadastro / link público), mas ocultas:
-    # visibility="hidden" já basta para não aparecerem, a seção é só rótulo.
+    # visibility="hidden" já basta para não aparecerem no menu nativo; como
+    # a navegação visível agora é 100% custom (st.page_link), essas páginas só
+    # precisam continuar registradas aqui para permanecerem roteáveis.
     hidden_pages = [verify_email_page, public_signup_page]
 
     if not is_authenticated():
@@ -125,6 +127,19 @@ def build_navigation() -> dict[str, list[st.Page]]:
     }
 
 
+def _visible_menu_pages(role: str | None) -> list[st.Page]:
+    menu_pages = [assistant_page, home_page]
+
+    if role in {"super_admin", "admin", "parceiro"}:
+        menu_pages += [supporters_page, goals_page]
+
+    if role in {"super_admin", "admin"}:
+        menu_pages.append(partners_page)
+        menu_pages.append(knowledge_page)
+
+    return menu_pages
+
+
 def render_user_card() -> None:
     """Card do usuário no topo da sidebar: nome · e-mail · papel."""
 
@@ -134,73 +149,92 @@ def render_user_card() -> None:
     role = role_label(profile.get("role"))
     cargo = display_job_title(profile)
 
-    with st.sidebar:
-        st.markdown(
-            f"""
-            <div class="sidebar-user-card">
-                <span class="name">🧑 {full_name or 'Usuário'}</span>
-                <span class="email">{email}</span>
-                <span class="role-chip">{role}</span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.caption(cargo)
-        st.divider()
+    st.markdown(
+        f"""
+        <div class="sidebar-user-card">
+            <span class="name">🧑 {full_name or 'Usuário'}</span>
+            <span class="email">{email}</span>
+            <span class="role-chip">{role}</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.caption(cargo)
+    st.divider()
 
 
 def render_guest_sidebar_header() -> None:
-    with st.sidebar:
-        st.markdown(
-            """
-            <div class="sidebar-guest-card">
-                Você ainda não está autenticado.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.divider()
+    st.markdown(
+        """
+        <div class="sidebar-guest-card">
+            Você ainda não está autenticado.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.divider()
+
+
+def render_menu_section(pages: list[st.Page]) -> None:
+    st.markdown('<span class="sidebar-section-label">Menu</span>', unsafe_allow_html=True)
+
+    for page in pages:
+        st.page_link(page, use_container_width=True)
+
+
+def render_account_section(pages: list[st.Page]) -> None:
+    st.divider()
+    st.markdown('<span class="sidebar-section-label">Conta</span>', unsafe_allow_html=True)
+
+    for page in pages:
+        st.page_link(page, use_container_width=True)
 
 
 def render_authenticated_sidebar_footer() -> None:
-    with st.sidebar:
-        st.divider()
+    st.divider()
 
-        st.markdown('<div class="sidebar-footer-actions">', unsafe_allow_html=True)
-        col_sair, col_limpar = st.columns(2)
+    st.markdown('<div class="sidebar-footer-actions">', unsafe_allow_html=True)
+    col_sair, col_limpar = st.columns(2)
 
-        with col_sair:
-            if st.button("🚪 Sair", use_container_width=True):
-                clear_session()
-                st.rerun()
+    with col_sair:
+        if st.button("🚪 Sair", use_container_width=True):
+            clear_session()
+            st.rerun()
 
-        with col_limpar:
-            if st.button("🗑️ Limpar", use_container_width=True):
-                st.session_state.clear()
-                st.rerun()
+    with col_limpar:
+        if st.button("🗑️ Limpar", use_container_width=True):
+            st.session_state.clear()
+            st.rerun()
 
-        st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def main() -> None:
     load_css()
 
-    # st.logo() é a única forma suportada de colocar algo ACIMA do widget
-    # de navegação — o próprio st.navigation() fixa o menu no topo da
-    # sidebar, ignorando a ordem de execução do código.
-    st.logo("🎯", size="medium")
-
+    # Navegação oculta: o próprio st.navigation() continua sendo a fonte
+    # única de verdade (registra as páginas e resolve rotas), mas o widget
+    # nativo fica escondido porque ele sempre se fixa no TOPO da sidebar,
+    # à frente de qualquer coisa escrita antes dele. Para o card do usuário
+    # aparecer logo abaixo da logo — antes do menu — desenhamos a navegação
+    # visível nós mesmos com st.page_link, na ordem exata que quisermos.
     authenticated = is_authenticated()
+    navigation_map = build_navigation()
+    pg = st.navigation(navigation_map, position="hidden")
 
-    if authenticated:
-        render_user_card()
-    else:
-        render_guest_sidebar_header()
+    with st.sidebar:
+        st.logo("🎯", size="medium")
 
-    pg = st.navigation(build_navigation())
+        if authenticated:
+            render_user_card()
 
-    if authenticated:
-        render_authenticated_sidebar_footer()
+            profile = get_profile() or {}
+            render_menu_section(_visible_menu_pages(profile.get("role")))
+            render_account_section(navigation_map.get("CONTA", []))
+            render_authenticated_sidebar_footer()
+        else:
+            render_guest_sidebar_header()
+            render_menu_section([login_page, signup_page])
 
     pg.run()
 
