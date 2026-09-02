@@ -20,7 +20,7 @@ initialize_session()
 
 st.title("✅ Confirmar e-mail")
 st.caption(
-    "Informe o código de seis dígitos enviado para o e-mail usado no cadastro."
+    "Informe o código enviado para o e-mail usado no cadastro."
 )
 
 default_email = st.session_state.get("pending_verification_email") or ""
@@ -29,8 +29,8 @@ with st.form("verify_otp_form"):
     email = st.text_input("E-mail", value=default_email)
     token = st.text_input(
         "Código de confirmação",
-        max_chars=6,
-        placeholder="000000",
+        max_chars=10,
+        placeholder="Código recebido por e-mail",
     )
 
     submitted = st.form_submit_button(
@@ -45,8 +45,8 @@ if submitted:
 
     if not email_ok:
         st.error(f"E-mail inválido: {email_result}")
-    elif len(sanitized_token) != 6:
-        st.error("Informe o código de seis dígitos recebido por e-mail.")
+    elif not (6 <= len(sanitized_token) <= 10):
+        st.error("Informe o código recebido por e-mail.")
     else:
         with st.spinner("Validando código..."):
             service = AuthService()
@@ -69,7 +69,7 @@ if submitted:
                 )
 
                 st.success("E-mail confirmado. Redirecionando para o painel...")
-                st.switch_page("app.py")
+                st.switch_page("pages/00_🏠_Início.py")
             else:
                 st.error(profile_result.message)
         else:

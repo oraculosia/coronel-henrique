@@ -18,7 +18,7 @@ st.set_page_config(
 initialize_session()
 
 if is_authenticated():
-    st.switch_page("app.py")
+    st.switch_page("pages/00_🏠_Início.py")
 
 st.title("🔐 Entrar")
 st.caption("Acesse sua conta da Campanha 2026.")
@@ -77,7 +77,7 @@ if submitted:
                         profile=profile,
                     )
                     st.success("Login realizado. Redirecionando...")
-                    st.switch_page("app.py")
+                    st.switch_page("pages/00_🏠_Início.py")
             else:
                 st.error(profile_result.message)
         else:

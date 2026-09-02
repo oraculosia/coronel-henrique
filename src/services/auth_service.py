@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-from gotrue.errors import AuthApiError
+from supabase_auth.errors import AuthApiError
 
 from src.database.supabase_client import get_supabase
 from src.utils.validators import normalize_email
@@ -25,6 +25,8 @@ class AuthService:
         email: str,
         whatsapp: str,
         password: str,
+        job_title: str = "",
+        avatar_path: str = "",
     ) -> ServiceResult:
         try:
             response = self.client.auth.sign_up(
@@ -36,6 +38,8 @@ class AuthService:
                             "first_name": first_name.strip(),
                             "last_name": last_name.strip(),
                             "whatsapp": whatsapp,
+                            "job_title": job_title.strip(),
+                            "avatar_path": avatar_path,
                         },
                     },
                 }
@@ -187,6 +191,7 @@ class AuthService:
                     last_name,
                     email,
                     whatsapp,
+                    job_title,
                     avatar_path,
                     role,
                     verification_status,
@@ -216,5 +221,69 @@ class AuthService:
                 message=(
                     "Não foi possível carregar seu perfil. "
                     "Tente entrar novamente."
+                ),
+            )
+
+    def update_own_profile(
+        self,
+        access_token: str,
+        user_id: str,
+        first_name: str,
+        last_name: str,
+        whatsapp: str,
+        job_title: str,
+    ) -> ServiceResult:
+        try:
+            user_client = get_supabase()
+            user_client.postgrest.auth(access_token)
+
+            payload = {
+                "first_name": first_name.strip(),
+                "last_name": last_name.strip(),
+                "whatsapp": whatsapp or None,
+                "job_title": job_title.strip() or None,
+            }
+
+            response = (
+                user_client.table("profiles")
+                .update(payload)
+                .eq("id", user_id)
+                .execute()
+            )
+
+            if not response.data:
+                return ServiceResult(
+                    success=False,
+                    message="Não foi possível atualizar o perfil.",
+                )
+
+            return self.get_profile(user_id=user_id, access_token=access_token)
+
+        except Exception:
+            return ServiceResult(
+                success=False,
+                message="Não foi possível salvar os dados da conta.",
+            )
+
+    def update_own_password(
+        self,
+        access_token: str,
+        refresh_token: str,
+        password: str,
+    ) -> ServiceResult:
+        try:
+            user_client = get_supabase()
+            user_client.auth.set_session(access_token, refresh_token)
+            user_client.auth.update_user({"password": password})
+            return ServiceResult(
+                success=True,
+                message="Senha atualizada.",
+            )
+        except Exception:
+            return ServiceResult(
+                success=False,
+                message=(
+                    "Os dados do perfil foram salvos, mas a senha "
+                    "não pôde ser alterada agora."
                 ),
             )

@@ -1,0 +1,18 @@
+📦 LOGO (redondo)
+─────────────────
+🧑 Card do usuário (borda retangular)
+   nome · email · role
+─────────────────
+MENU
+🤖 Assistente IA
+🏠 Início
+🛒 Novo Pedido
+💰 Orçamento
+📋 Meus Pedidos
+📄 Detalhe do Pedido
+✈️ Rastreamento
+
+CONTA
+⚙️ Configuração
+─────────────────
+🚪 Sair  |  🗑️ Limpar

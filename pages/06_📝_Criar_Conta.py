@@ -1,7 +1,9 @@
 import streamlit as st
 
 from src.auth.session import initialize_session, set_pending_verification
+from src.config.settings import settings
 from src.services.auth_service import AuthService
+from src.utils.uploads import validate_and_save_image
 from src.utils.validators import (
     validate_email_address,
     validate_password,
@@ -22,7 +24,7 @@ initialize_session()
 def signup_success_dialog(email: str) -> None:
     st.success("Seu cadastro foi registrado com sucesso.")
     st.write(
-        "Enviamos um código de seis dígitos para o seu e-mail. "
+        "Enviamos um código de confirmação para o seu e-mail. "
         "Digite-o na próxima tela para concluir a verificação."
     )
     st.caption(f"E-mail: {email}")
@@ -35,17 +37,35 @@ st.title("📝 Criar conta")
 st.caption("Crie sua conta para acessar a plataforma Campanha 2026.")
 
 with st.form("signup_form", clear_on_submit=False):
-    first_name = st.text_input("Nome", max_chars=100)
-    last_name = st.text_input("Sobrenome", max_chars=100)
-    email = st.text_input("E-mail", placeholder="nome@exemplo.com")
-    whatsapp = st.text_input(
-        "WhatsApp",
-        placeholder="(31) 99999-9999",
+    col1, col2 = st.columns(2)
+
+    with col1:
+        first_name = st.text_input("Nome", max_chars=100)
+        email = st.text_input("E-mail", placeholder="nome@exemplo.com")
+        password = st.text_input("Senha", type="password")
+
+    with col2:
+        last_name = st.text_input("Sobrenome", max_chars=100)
+        whatsapp = st.text_input(
+            "WhatsApp",
+            placeholder="(31) 99999-9999",
+        )
+        password_confirmation = st.text_input(
+            "Confirmar senha",
+            type="password",
+        )
+
+    job_title = st.text_input(
+        "Cargo",
+        max_chars=120,
+        placeholder="ex: Desenvolvedor de IA",
+        help="Cargo profissional. É o que aparece para outros usuários.",
     )
-    password = st.text_input("Senha", type="password")
-    password_confirmation = st.text_input(
-        "Confirmar senha",
-        type="password",
+
+    profile_photo = st.file_uploader(
+        "Foto de perfil (opcional)",
+        type=["png", "jpg", "jpeg", "webp"],
+        help="Aparecerá futuramente no Assistente IA e em listagens.",
     )
 
     consent = st.checkbox(
@@ -88,6 +108,16 @@ if submitted:
     if not consent:
         errors.append("Você deve aceitar o uso dos dados para continuar.")
 
+    avatar_path = ""
+    if profile_photo is not None:
+        photo_ok, photo_result = validate_and_save_image(
+            profile_photo, settings.PROFILE_IMAGE_DIR
+        )
+        if not photo_ok:
+            errors.append(photo_result)
+        else:
+            avatar_path = photo_result
+
     if errors:
         for error in errors:
             st.error(error)
@@ -100,6 +130,8 @@ if submitted:
                 email=email_result,
                 whatsapp=whatsapp_result,
                 password=password,
+                job_title=job_title,
+                avatar_path=avatar_path,
             )
 
         if result.success and result.data:

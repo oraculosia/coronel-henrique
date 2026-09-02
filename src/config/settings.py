@@ -3,6 +3,8 @@ import os
 
 from dotenv import load_dotenv
 
+from src.config.env import getenv_aliased, validate_foundation_settings
+
 ROOT_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT_DIR / ".env")
 
@@ -12,9 +14,19 @@ class Settings:
     APP_NAME = os.getenv("APP_NAME", "Campanha 2026")
     APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8501")
 
-    SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-    SUPABASE_PUBLISHABLE_KEY = os.getenv("SUPABASE_PUBLISHABLE_KEY", "")
-    SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    SUPABASE_URL = getenv_aliased("SUPABASE_URL")
+    SUPABASE_PUBLISHABLE_KEY = getenv_aliased("SUPABASE_PUBLISHABLE_KEY")
+    SUPABASE_SERVICE_ROLE_KEY = getenv_aliased("SUPABASE_SERVICE_ROLE_KEY")
+
+    SUPER_ADMIN_EMAIL = os.getenv("SUPER_ADMIN_EMAIL", "")
+    SUPER_ADMIN_PASSWORD = os.getenv("SUPER_ADMIN_PASSWORD", "")
+    SUPER_ADMIN_FIRST_NAME = os.getenv("SUPER_ADMIN_FIRST_NAME", "William")
+    SUPER_ADMIN_LAST_NAME = os.getenv("SUPER_ADMIN_LAST_NAME", "Eustáquio")
+    SUPER_ADMIN_WHATSAPP = os.getenv("SUPER_ADMIN_WHATSAPP", "31998417976")
+    SUPER_ADMIN_JOB_TITLE = os.getenv(
+        "SUPER_ADMIN_JOB_TITLE",
+        "Desenvolvedor de IA",
+    )
 
     GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
     GROQ_MODEL = os.getenv("GROQ_MODEL", "")
@@ -33,6 +45,13 @@ class Settings:
         "src/images/apoiadores",
     )
     MAX_IMAGE_SIZE_MB = int(os.getenv("MAX_IMAGE_SIZE_MB", "3"))
+
+    def foundation_errors(self) -> list[str]:
+        return validate_foundation_settings(
+            supabase_url=self.SUPABASE_URL,
+            publishable_key=self.SUPABASE_PUBLISHABLE_KEY,
+            service_role_key=self.SUPABASE_SERVICE_ROLE_KEY,
+        )
 
 
 settings = Settings()

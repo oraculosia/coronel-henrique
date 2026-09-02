@@ -31,157 +31,130 @@ def load_css() -> None:
         )
 
 
-def render_guest_sidebar() -> None:
-    with st.sidebar:
-        st.markdown("## 🎯 Campanha 2026")
-        st.caption("Gestão de apoiadores e parceiros")
-        st.divider()
+# -----------------------------------------------------------------------------
+# Páginas — declaradas uma única vez aqui. st.navigation() passa a ser a
+# ÚNICA fonte de navegação: substitui a listagem automática de pages/,
+# eliminando a duplicidade entre o menu nativo do Streamlit e um menu
+# customizado com st.page_link.
+# -----------------------------------------------------------------------------
+home_page = st.Page(
+    "pages/00_🏠_Início.py", title="Início", icon="🏠", url_path="inicio", default=True
+)
+assistant_page = st.Page(
+    "pages/01_🤖_Assistente_IA.py",
+    title="Assistente IA",
+    icon="🤖",
+    url_path="assistente-ia",
+)
+supporters_page = st.Page(
+    "pages/02_👥_Apoiadores.py", title="Apoiadores", icon="👥", url_path="apoiadores"
+)
+goals_page = st.Page(
+    "pages/03_🎯_Metas.py", title="Metas Diárias", icon="🎯", url_path="metas"
+)
+partners_page = st.Page(
+    "pages/04_🤝_Parceiros.py", title="Parceiros", icon="🤝", url_path="parceiros"
+)
+login_page = st.Page(
+    "pages/05_🔐_Login.py", title="Entrar", icon="🔐", url_path="entrar"
+)
+signup_page = st.Page(
+    "pages/06_📝_Criar_Conta.py",
+    title="Criar conta",
+    icon="📝",
+    url_path="criar-conta",
+)
+# Reachable via link (fluxo pós-cadastro / link público), mas fora do menu
+# visível — evita duplicidade e ruído para quem já está navegando.
+verify_email_page = st.Page(
+    "pages/07_✅_Verificar_Email.py",
+    title="Verificar e-mail",
+    icon="✅",
+    url_path="verificar-email",
+    visibility="hidden",
+)
+account_page = st.Page(
+    "pages/08_👤_Minha_Conta.py",
+    title="Minha conta",
+    icon="👤",
+    url_path="minha-conta",
+)
+public_signup_page = st.Page(
+    "pages/09_🙌_Cadastro_Apoiador.py",
+    title="Cadastro de apoiador",
+    icon="🙌",
+    url_path="apoiar",
+    visibility="hidden",
+)
+knowledge_page = st.Page(
+    "pages/10_📚_Base_de_Conhecimento.py",
+    title="Base de Conhecimento",
+    icon="📚",
+    url_path="conhecimento",
+)
 
+
+def build_navigation() -> dict[str, list[st.Page]]:
+    # Roteáveis por link direto (pós-cadastro / link público), mas ocultas:
+    # visibility="hidden" já basta para não aparecerem, a seção é só rótulo.
+    hidden_pages = [verify_email_page, public_signup_page]
+
+    if not is_authenticated():
+        return {
+            "": [home_page],
+            "MENU": [login_page, signup_page, *hidden_pages],
+        }
+
+    profile = get_profile() or {}
+    role = profile.get("role")
+
+    menu_pages = [home_page, assistant_page]
+
+    if role in {"super_admin", "admin", "parceiro"}:
+        menu_pages += [supporters_page, goals_page]
+
+    if role in {"super_admin", "admin"}:
+        menu_pages.append(partners_page)
+        menu_pages.append(knowledge_page)
+
+    return {
+        "MENU": [*menu_pages, *hidden_pages],
+        "CONTA": [account_page],
+    }
+
+
+def render_guest_sidebar_footer() -> None:
+    with st.sidebar:
+        st.divider()
         st.info("Você ainda não está autenticado.")
 
-        st.page_link(
-            "pages/05_🔐_Login.py",
-            label="🔐 Entrar",
-            icon="🔐",
-            use_container_width=True,
-        )
 
-        st.page_link(
-            "pages/06_📝_Criar_Conta.py",
-            label="📝 Criar conta",
-            icon="📝",
-            use_container_width=True,
-        )
-
-
-def render_authenticated_sidebar() -> None:
-    profile = get_profile() or {}
-
+def render_authenticated_sidebar_footer() -> None:
     with st.sidebar:
-        st.markdown("## 🎯 Campanha 2026")
-        st.caption("Gestão de apoiadores e parceiros")
         st.divider()
-
-        full_name = (
-            f"{profile.get('first_name', '')} "
-            f"{profile.get('last_name', '')}"
-        ).strip()
-
-        st.markdown(f"### 👤 {full_name or 'Usuário'}")
-        st.caption(profile.get("email", ""))
-        st.info(f"Perfil: {profile.get('role', 'apoiador')}")
-
-        st.divider()
-        st.markdown("### MENU")
-
-        st.page_link("app.py", label="🏠 Início", icon="🏠")
-        st.page_link(
-            "pages/01_🤖_Assistente_IA.py",
-            label="🤖 Assistente IA",
-            icon="🤖",
-        )
-
-        if profile.get("role") in {"super_admin", "admin", "parceiro"}:
-            st.page_link(
-                "pages/02_👥_Apoiadores.py",
-                label="👥 Apoiadores",
-                icon="👥",
-            )
-            st.page_link(
-                "pages/03_🎯_Metas.py",
-                label="🎯 Metas Diárias",
-                icon="🎯",
-            )
-
-        if profile.get("role") in {"super_admin", "admin"}:
-            st.page_link(
-                "pages/04_🤝_Parceiros.py",
-                label="🤝 Parceiros",
-                icon="🤝",
-            )
-
-        st.divider()
-        st.markdown("### CONTA")
-
         if st.button("🚪 Sair", use_container_width=True):
             clear_session()
             st.rerun()
 
 
-def render_home() -> None:
-    if not is_authenticated():
-        st.markdown(
-            """
-            <section class="campaign-hero">
-                <h1>Campanha 2026</h1>
-                <p>
-                    Uma plataforma para organizar parceiros, acompanhar metas
-                    diárias e ampliar o número de apoiadores.
-                </p>
-            </section>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        left, right = st.columns(2)
-
-        with left:
-            if st.button(
-                "Criar minha conta",
-                type="primary",
-                use_container_width=True,
-            ):
-                st.switch_page("pages/06_📝_Criar_Conta.py")
-
-        with right:
-            if st.button("Entrar", use_container_width=True):
-                st.switch_page("pages/05_🔐_Login.py")
-
-        st.divider()
-        st.caption("Acesso protegido por autenticação e permissões.")
-        return
-
-    profile = get_profile() or {}
-    first_name = profile.get("first_name", "Usuário")
-    role = profile.get("role", "apoiador")
-
-    st.markdown(
-        f"""
-        <section class="campaign-hero">
-            <h1>Olá, {first_name}! 👋</h1>
-            <p>
-                Seu perfil atual é <strong>{role}</strong>.
-                O dashboard operacional será implementado na Fase 3.
-            </p>
-        </section>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.metric("Status da conta", "Ativa")
-
-    with col2:
-        st.metric("E-mail", "Confirmado")
-
-    with col3:
-        st.metric("Papel", role.replace("_", " ").title())
-
-    st.divider()
-    st.success("Autenticação e sessão estão funcionando.")
-
-
 def main() -> None:
     load_css()
 
-    if is_authenticated():
-        render_authenticated_sidebar()
-    else:
-        render_guest_sidebar()
+    # st.logo() é a única forma suportada de colocar algo ACIMA do widget
+    # de navegação — o próprio st.navigation() fixa o menu no topo da
+    # sidebar, ignorando a ordem de execução do código.
+    st.logo("🎯", size="medium")
 
-    render_home()
+    authenticated = is_authenticated()
+
+    pg = st.navigation(build_navigation())
+
+    if authenticated:
+        render_authenticated_sidebar_footer()
+    else:
+        render_guest_sidebar_footer()
+
+    pg.run()
 
 
 if __name__ == "__main__":
