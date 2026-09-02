@@ -3,7 +3,7 @@ from typing import Any
 
 from src.config.settings import settings
 from src.database.supabase_client import get_supabase
-from src.prompts.assistant import build_system_prompt
+from src.prompts.assistant import build_public_system_prompt, build_system_prompt
 
 DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
 
@@ -21,14 +21,28 @@ class AIService:
     ai_conversations (auditoria).
     """
 
-    def __init__(self, access_token: str) -> None:
+    def __init__(self, access_token: str | None = None) -> None:
         self.client = get_supabase()
-        self.client.postgrest.auth(access_token)
+        if access_token:
+            self.client.postgrest.auth(access_token)
 
     def _fetch_context_documents(self, limit: int = 10) -> list[dict[str, Any]]:
         response = (
             self.client.table("knowledge_documents")
             .select("id, title, content")
+            .order("updated_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return response.data or []
+
+    def _fetch_public_context_documents(self, limit: int = 10) -> list[dict[str, Any]]:
+        """Só documentos marcados is_public — usados pelo Assistente IA sem login."""
+        response = (
+            self.client.table("knowledge_documents")
+            .select("id, title, content")
+            .eq("is_public", True)
+            .eq("is_active", True)
             .order("updated_at", desc=True)
             .limit(limit)
             .execute()
@@ -101,6 +115,47 @@ class AIService:
             message="ok",
             data={"answer": answer, "sources": sources},
         )
+
+    def ask_public(self, question: str) -> ServiceResult:
+        """Versão sem login do Assistente IA: só usa documentos is_public e
+        não grava histórico (não há user_id — visitante anônimo)."""
+        if not settings.GROQ_API_KEY:
+            return ServiceResult(
+                success=False,
+                message="Assistente IA não configurado (GROQ_API_KEY ausente no .env).",
+            )
+
+        question = question.strip()
+        if not question:
+            return ServiceResult(success=False, message="Digite uma pergunta.")
+
+        try:
+            documents = self._fetch_public_context_documents()
+        except Exception:
+            documents = []
+
+        system_prompt = build_public_system_prompt(documents)
+
+        try:
+            from groq import Groq
+
+            groq_client = Groq(api_key=settings.GROQ_API_KEY)
+            completion = groq_client.chat.completions.create(
+                model=settings.GROQ_MODEL or DEFAULT_GROQ_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": question},
+                ],
+                temperature=0.3,
+            )
+            answer = completion.choices[0].message.content or ""
+        except Exception:
+            return ServiceResult(
+                success=False,
+                message="Não foi possível obter resposta do assistente agora.",
+            )
+
+        return ServiceResult(success=True, message="ok", data={"answer": answer})
 
     def list_own_history(self, user_id: str, limit: int = 20) -> ServiceResult:
         try:

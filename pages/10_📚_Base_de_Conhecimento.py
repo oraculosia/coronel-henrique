@@ -38,6 +38,10 @@ with tab_documents:
                 default=["super_admin"],
                 format_func=lambda role: ROLE_LABELS.get(role, role),
             )
+            is_public = st.checkbox(
+                "Visível no Assistente IA público (sem login)",
+                help="Usado pela página pública de atendimento do Coronel Henrique.",
+            )
             submitted = st.form_submit_button(
                 "Criar documento", type="primary", use_container_width=True
             )
@@ -53,6 +57,7 @@ with tab_documents:
                     content=content,
                     audience_roles=audience_roles,
                     created_by=profile["id"],
+                    is_public=is_public,
                 )
                 if result.success:
                     st.success(result.message)
@@ -87,6 +92,10 @@ with tab_documents:
                     new_is_active = st.checkbox(
                         "Documento ativo", value=document["is_active"]
                     )
+                    new_is_public = st.checkbox(
+                        "Visível no Assistente IA público (sem login)",
+                        value=document.get("is_public", False),
+                    )
                     save = st.form_submit_button(
                         "Salvar alterações", use_container_width=True
                     )
@@ -99,6 +108,7 @@ with tab_documents:
                         content=new_content,
                         audience_roles=new_audience_roles,
                         is_active=new_is_active,
+                        is_public=new_is_public,
                     )
                     if update_result.success:
                         st.success(update_result.message)

@@ -135,3 +135,39 @@ def test_knowledge_page_lists_documents_for_staff(monkeypatch) -> None:
 
     assert not at.exception
     assert any("Sobre a campanha" in e.label for e in at.expander)
+
+
+# ---------------------------------------------------------------------------
+# Assistente IA público (sem login)
+# ---------------------------------------------------------------------------
+
+
+def test_public_chat_page_answers_question(monkeypatch) -> None:
+    monkeypatch.setattr(AIService, "__init__", lambda self, access_token=None: None)
+    monkeypatch.setattr(
+        AIService,
+        "ask_public",
+        lambda self, question: AIResult(
+            success=True, message="ok", data={"answer": "Os projetos incluem..."}
+        ),
+    )
+
+    at = AppTest.from_file(_page("11_💬_Fale_com_a_Campanha.py"))
+    at.run()
+
+    assert not at.exception
+    at.chat_input[0].set_value("Quais os projetos do Coronel Henrique?").run()
+
+    assert not at.exception
+    all_text = [msg.value for msg in at.markdown] + [msg.value for msg in at.text]
+    assert any("projetos incluem" in value for value in all_text)
+
+
+def test_public_chat_page_shows_supporter_button(monkeypatch) -> None:
+    monkeypatch.setattr(AIService, "__init__", lambda self, access_token=None: None)
+
+    at = AppTest.from_file(_page("11_💬_Fale_com_a_Campanha.py"))
+    at.run()
+
+    assert not at.exception
+    assert any("Quero ser apoiador" in b.label for b in at.button)

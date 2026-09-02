@@ -45,7 +45,7 @@ class KnowledgeService:
             response = (
                 self.client.table("knowledge_documents")
                 .select(
-                    "id, title, content, audience_roles, is_active, "
+                    "id, title, content, audience_roles, is_active, is_public, "
                     "created_at, updated_at"
                 )
                 .order("updated_at", desc=True)
@@ -63,6 +63,7 @@ class KnowledgeService:
         content: str,
         audience_roles: list[str],
         created_by: str,
+        is_public: bool = False,
     ) -> ServiceResult:
         try:
             response = (
@@ -72,6 +73,7 @@ class KnowledgeService:
                         "title": title.strip(),
                         "content": content.strip(),
                         "audience_roles": audience_roles,
+                        "is_public": is_public,
                         "created_by": created_by,
                         "updated_by": created_by,
                     }
@@ -104,6 +106,7 @@ class KnowledgeService:
         content: str | None = None,
         audience_roles: list[str] | None = None,
         is_active: bool | None = None,
+        is_public: bool | None = None,
     ) -> ServiceResult:
         payload: dict[str, Any] = {"updated_by": actor_id}
         if title is not None:
@@ -114,6 +117,8 @@ class KnowledgeService:
             payload["audience_roles"] = audience_roles
         if is_active is not None:
             payload["is_active"] = is_active
+        if is_public is not None:
+            payload["is_public"] = is_public
 
         try:
             self.client.table("knowledge_documents").update(payload).eq(

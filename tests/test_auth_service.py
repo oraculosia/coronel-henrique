@@ -1,3 +1,5 @@
+from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -40,6 +42,8 @@ def test_sign_up_success(service: AuthService, fake_client: MagicMock) -> None:
         "user_id": "user-1",
         "email": "programador.descpro@gmail.com",
         "session_exists": False,
+        "access_token": None,
+        "refresh_token": None,
     }
     called_payload = fake_client.auth.sign_up.call_args.args[0]
     assert called_payload["email"] == "programador.descpro@gmail.com"
@@ -96,36 +100,193 @@ def test_sign_up_generic_exception_returns_friendly_message(
     assert "Supabase" in result.message
 
 
-def test_verify_signup_otp_success(service: AuthService, fake_client: MagicMock) -> None:
-    fake_client.auth.verify_otp.return_value = SimpleNamespace(
-        user=SimpleNamespace(id="user-1", email="a@b.com"),
-        session=SimpleNamespace(
-            access_token="access-token", refresh_token="refresh-token"
-        ),
-    )
+def test_send_verification_code_success(service: AuthService, monkeypatch) -> None:
+    admin = MagicMock()
+    monkeypatch.setattr("src.services.auth_service.get_supabase_admin", lambda: admin)
+    notificador = MagicMock()
+    monkeypatch.setattr("src.services.auth_service.Notificador", lambda: notificador)
 
-    result = service.verify_signup_otp(email="a@b.com", token="123456")
+    result = service.send_verification_code(
+        user_id="user-1", email="a@b.com", first_name="Ana"
+    )
 
     assert result.success
-    assert result.data == {
-        "user_id": "user-1",
-        "email": "a@b.com",
-        "access_token": "access-token",
-        "refresh_token": "refresh-token",
-    }
+    admin.table.return_value.delete.return_value.eq.assert_called_once_with(
+        "user_id", "user-1"
+    )
+    notificador.enviar_codigo_verificacao.assert_called_once()
+    _, kwargs = notificador.enviar_codigo_verificacao.call_args
+    assert kwargs["destino"] == "a@b.com"
+    assert len(kwargs["codigo"]) == 6
 
 
-def test_verify_signup_otp_invalid_token(
-    service: AuthService, fake_client: MagicMock
-) -> None:
-    fake_client.auth.verify_otp.side_effect = AuthApiError(
-        "Token has expired or is invalid", 403, "otp_expired"
+def _fake_admin_with_tables(monkeypatch) -> "defaultdict[str, MagicMock]":
+    tables: "defaultdict[str, MagicMock]" = defaultdict(MagicMock)
+
+    admin = MagicMock()
+    admin.table.side_effect = lambda name: tables[name]
+    monkeypatch.setattr("src.services.auth_service.get_supabase_admin", lambda: admin)
+
+    return tables
+
+
+def test_verify_own_code_success(service: AuthService, monkeypatch) -> None:
+    tables = _fake_admin_with_tables(monkeypatch)
+
+    tables["profiles"].select.return_value.eq.return_value.single.return_value.execute.return_value = (
+        SimpleNamespace(data={"id": "user-1"})
     )
 
-    result = service.verify_signup_otp(email="a@b.com", token="000000")
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+    tables[
+        "email_verification_codes"
+    ].select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = SimpleNamespace(
+        data=[
+            {
+                "id": "code-1",
+                "code_hash": AuthService._hash_code("123456"),
+                "expires_at": expires_at,
+                "consumed_at": None,
+            }
+        ]
+    )
+
+    result = service.verify_own_code(email="a@b.com", code="123456")
+
+    assert result.success
+    assert result.data == {"user_id": "user-1", "email": "a@b.com"}
+    tables["email_verification_codes"].update.assert_called_once()
+    tables["profiles"].update.assert_called_once_with(
+        {"verification_status": "verified"}
+    )
+
+
+def test_verify_own_code_creates_partner_link(service: AuthService, monkeypatch) -> None:
+    tables = _fake_admin_with_tables(monkeypatch)
+
+    tables["profiles"].select.return_value.eq.return_value.single.return_value.execute.return_value = (
+        SimpleNamespace(data={"id": "user-1", "first_name": "Homem", "last_name": "Aranha"})
+    )
+
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+    tables[
+        "email_verification_codes"
+    ].select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = SimpleNamespace(
+        data=[
+            {
+                "id": "code-1",
+                "code_hash": AuthService._hash_code("123456"),
+                "expires_at": expires_at,
+                "consumed_at": None,
+            }
+        ]
+    )
+    # Nenhum vínculo em partners ainda, e o slug candidato está livre.
+    tables[
+        "partners"
+    ].select.return_value.eq.return_value.limit.return_value.execute.return_value = (
+        SimpleNamespace(data=[])
+    )
+
+    result = service.verify_own_code(email="a@b.com", code="123456")
+
+    assert result.success
+    tables["partners"].insert.assert_called_once_with(
+        {
+            "id": "user-1",
+            "public_slug": "homem-aranha",
+            "is_accepting_supporters": True,
+            "created_by": "user-1",
+        }
+    )
+
+
+def test_verify_own_code_wrong_code(service: AuthService, monkeypatch) -> None:
+    tables = _fake_admin_with_tables(monkeypatch)
+    tables["profiles"].select.return_value.eq.return_value.single.return_value.execute.return_value = (
+        SimpleNamespace(data={"id": "user-1"})
+    )
+
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+    tables[
+        "email_verification_codes"
+    ].select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = SimpleNamespace(
+        data=[
+            {
+                "id": "code-1",
+                "code_hash": AuthService._hash_code("123456"),
+                "expires_at": expires_at,
+                "consumed_at": None,
+            }
+        ]
+    )
+
+    result = service.verify_own_code(email="a@b.com", code="000000")
 
     assert not result.success
-    assert "Código inválido" in result.message
+
+
+def test_verify_own_code_expired(service: AuthService, monkeypatch) -> None:
+    tables = _fake_admin_with_tables(monkeypatch)
+
+    tables["profiles"].select.return_value.eq.return_value.single.return_value.execute.return_value = (
+        SimpleNamespace(data={"id": "user-1"})
+    )
+
+    expires_at = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+    tables[
+        "email_verification_codes"
+    ].select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = SimpleNamespace(
+        data=[
+            {
+                "id": "code-1",
+                "code_hash": AuthService._hash_code("123456"),
+                "expires_at": expires_at,
+                "consumed_at": None,
+            }
+        ]
+    )
+
+    result = service.verify_own_code(email="a@b.com", code="123456")
+
+    assert not result.success
+    assert "expirado" in result.message.lower()
+
+
+def test_resend_own_code_success(service: AuthService, monkeypatch) -> None:
+    tables = _fake_admin_with_tables(monkeypatch)
+    notificador = MagicMock()
+    monkeypatch.setattr("src.services.auth_service.Notificador", lambda: notificador)
+
+    tables["profiles"].select.return_value.eq.return_value.single.return_value.execute.return_value = (
+        SimpleNamespace(
+            data={"id": "user-1", "first_name": "Ana", "verification_status": "pending"}
+        )
+    )
+
+    result = service.resend_own_code(email="a@b.com")
+
+    assert result.success
+    notificador.enviar_codigo_verificacao.assert_called_once()
+
+
+def test_resend_own_code_already_verified(service: AuthService, monkeypatch) -> None:
+    tables = _fake_admin_with_tables(monkeypatch)
+
+    tables["profiles"].select.return_value.eq.return_value.single.return_value.execute.return_value = (
+        SimpleNamespace(
+            data={
+                "id": "user-1",
+                "first_name": "Ana",
+                "verification_status": "verified",
+            }
+        )
+    )
+
+    result = service.resend_own_code(email="a@b.com")
+
+    assert not result.success
+    assert "já está confirmado" in result.message
 
 
 def test_sign_in_success(service: AuthService, fake_client: MagicMock) -> None:

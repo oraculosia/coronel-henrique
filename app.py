@@ -39,7 +39,7 @@ def load_css() -> None:
 # customizado com st.page_link.
 # -----------------------------------------------------------------------------
 home_page = st.Page(
-    "pages/00_🏠_Início.py", title="Início", icon="🏠", url_path="inicio", default=True
+    "pages/00_🏠_Dashboard.py", title="Dashboard", icon="🏠", url_path="dashboard", default=True
 )
 assistant_page = st.Page(
     "pages/01_🤖_Assistente_IA.py",
@@ -93,6 +93,13 @@ knowledge_page = st.Page(
     icon="📚",
     url_path="conhecimento",
 )
+public_ai_page = st.Page(
+    "pages/11_💬_Fale_com_a_Campanha.py",
+    title="Fale com a Campanha",
+    icon="💬",
+    url_path="agente-de-ia-coronel",
+    visibility="hidden",
+)
 
 
 def build_navigation() -> dict[str, list[st.Page]]:
@@ -100,7 +107,7 @@ def build_navigation() -> dict[str, list[st.Page]]:
     # visibility="hidden" já basta para não aparecerem no menu nativo; como
     # a navegação visível agora é 100% custom (st.page_link), essas páginas só
     # precisam continuar registradas aqui para permanecerem roteáveis.
-    hidden_pages = [verify_email_page, public_signup_page]
+    hidden_pages = [verify_email_page, public_signup_page, public_ai_page]
 
     if not is_authenticated():
         return {
@@ -226,20 +233,22 @@ def main() -> None:
     navigation_map = build_navigation()
     pg = st.navigation(navigation_map, position="hidden")
 
-    with st.sidebar:
-        with st.container(key="sidebar_logo"):
-            st.image("assets/images/logo_coronel_henrique.png", width=132)
+    # Assistente IA público: página institucional sem menu/sidebar, só o chat.
+    if pg is not public_ai_page:
+        with st.sidebar:
+            with st.container(key="sidebar_logo"):
+                st.image("assets/images/logo_coronel_henrique.png", width=132)
 
-        if authenticated:
-            render_user_card()
+            if authenticated:
+                render_user_card()
 
-            profile = get_profile() or {}
-            render_menu_section(_visible_menu_pages(profile.get("role")))
-            render_account_section(navigation_map.get("CONTA", []))
-            render_authenticated_sidebar_footer()
-        else:
-            render_guest_sidebar_header()
-            render_menu_section([login_page, signup_page])
+                profile = get_profile() or {}
+                render_menu_section(_visible_menu_pages(profile.get("role")))
+                render_account_section(navigation_map.get("CONTA", []))
+                render_authenticated_sidebar_footer()
+            else:
+                render_guest_sidebar_header()
+                render_menu_section([login_page, signup_page])
 
     pg.run()
 

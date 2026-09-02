@@ -11,6 +11,7 @@ SESSION_DEFAULTS: dict[str, Any] = {
     "user_email": None,
     "profile": None,
     "pending_verification_email": None,
+    "pending_verification_tokens": None,
 }
 
 
@@ -32,10 +33,23 @@ def set_authenticated_session(
     st.session_state["user_email"] = profile["email"]
     st.session_state["profile"] = profile
     st.session_state["pending_verification_email"] = None
+    st.session_state["pending_verification_tokens"] = None
 
 
-def set_pending_verification(email: str) -> None:
+def set_pending_verification(
+    email: str,
+    access_token: str | None = None,
+    refresh_token: str | None = None,
+) -> None:
+    """Guarda o e-mail pendente e, se disponível, a sessão já emitida no
+    sign_up (usada para logar automaticamente após o código próprio ser
+    confirmado, sem precisar pedir a senha de novo)."""
     st.session_state["pending_verification_email"] = email
+    st.session_state["pending_verification_tokens"] = (
+        {"access_token": access_token, "refresh_token": refresh_token}
+        if access_token and refresh_token
+        else None
+    )
 
 
 def clear_session() -> None:

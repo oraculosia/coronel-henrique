@@ -115,6 +115,38 @@ def test_ask_handles_groq_exception_gracefully(
     assert not result.success
 
 
+def test_ask_public_success_returns_answer(
+    monkeypatch, fake_client: MagicMock
+) -> None:
+    monkeypatch.setattr("src.services.ai_service.get_supabase", lambda: fake_client)
+    monkeypatch.setattr(settings, "GROQ_API_KEY", "fake-key")
+    monkeypatch.setattr(settings, "GROQ_MODEL", "")
+
+    fake_client.table.return_value.select.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[{"id": "d1", "title": "Projetos", "content": "Texto público"}]
+    )
+    fake_groq_client = _fake_groq(monkeypatch, answer="Resposta pública")
+
+    service = AIService()
+    result = service.ask_public(question="Quais os projetos?")
+
+    assert result.success
+    assert result.data["answer"] == "Resposta pública"
+    fake_groq_client.chat.completions.create.assert_called_once()
+
+
+def test_ask_public_returns_error_when_api_key_missing(
+    monkeypatch, fake_client: MagicMock
+) -> None:
+    monkeypatch.setattr("src.services.ai_service.get_supabase", lambda: fake_client)
+    monkeypatch.setattr(settings, "GROQ_API_KEY", "")
+
+    service = AIService()
+    result = service.ask_public(question="Oi")
+
+    assert not result.success
+
+
 def test_list_own_history_returns_rows(
     service: AIService, fake_client: MagicMock
 ) -> None:

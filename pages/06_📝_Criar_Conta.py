@@ -135,7 +135,22 @@ if submitted:
             )
 
         if result.success and result.data:
-            set_pending_verification(result.data["email"])
+            set_pending_verification(
+                result.data["email"],
+                access_token=result.data.get("access_token"),
+                refresh_token=result.data.get("refresh_token"),
+            )
+
+            # Código próprio (não usa o e-mail do Supabase) — falha no envio
+            # não deve travar o cadastro, o usuário pode reenviar depois.
+            send_result = service.send_verification_code(
+                user_id=result.data["user_id"],
+                email=result.data["email"],
+                first_name=first_name,
+            )
+            if not send_result.success:
+                st.warning(send_result.message)
+
             signup_success_dialog(result.data["email"])
         else:
             st.error(result.message)

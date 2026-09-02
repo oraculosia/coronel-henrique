@@ -177,6 +177,11 @@ def test_signup_page_success_stores_pending_verification(monkeypatch) -> None:
             },
         ),
     )
+    monkeypatch.setattr(
+        AuthService,
+        "send_verification_code",
+        lambda self, **kwargs: ServiceResult(success=True, message="ok"),
+    )
 
     at = _make_app(monkeypatch)
     at = _goto(at, "pages/06_📝_Criar_Conta.py")
@@ -216,19 +221,42 @@ def test_otp_page_rejects_short_code(monkeypatch) -> None:
     assert any("código recebido" in e.value.lower() for e in at.error)
 
 
-def test_otp_page_success_authenticates_user(monkeypatch, verified_profile) -> None:
+def test_otp_page_success_without_tokens_shows_login_link(
+    monkeypatch, verified_profile
+) -> None:
     monkeypatch.setattr(
         AuthService,
-        "verify_signup_otp",
-        lambda self, email, token: ServiceResult(
+        "verify_own_code",
+        lambda self, email, code: ServiceResult(
             success=True,
             message="ok",
-            data={
-                "user_id": verified_profile["id"],
-                "email": verified_profile["email"],
-                "access_token": "access-token",
-                "refresh_token": "refresh-token",
-            },
+            data={"user_id": verified_profile["id"], "email": verified_profile["email"]},
+        ),
+    )
+
+    at = _make_app(monkeypatch)
+    at = _goto(at, "pages/07_✅_Verificar_Email.py")
+
+    at.text_input[0].input(verified_profile["email"])
+    at.text_input[1].input("123456")
+    at.button[0].click()
+    at.run()
+
+    assert not at.exception
+    assert at.session_state["authenticated"] is False
+    assert any("confirmado" in s.value.lower() for s in at.success)
+
+
+def test_otp_page_success_with_tokens_authenticates_user(
+    monkeypatch, verified_profile
+) -> None:
+    monkeypatch.setattr(
+        AuthService,
+        "verify_own_code",
+        lambda self, email, code: ServiceResult(
+            success=True,
+            message="ok",
+            data={"user_id": verified_profile["id"], "email": verified_profile["email"]},
         ),
     )
     monkeypatch.setattr(
@@ -241,6 +269,10 @@ def test_otp_page_success_authenticates_user(monkeypatch, verified_profile) -> N
 
     at = _make_app(monkeypatch)
     at = _goto(at, "pages/07_✅_Verificar_Email.py")
+    at.session_state["pending_verification_tokens"] = {
+        "access_token": "access-token",
+        "refresh_token": "refresh-token",
+    }
 
     at.text_input[0].input(verified_profile["email"])
     at.text_input[1].input("123456")
@@ -254,8 +286,8 @@ def test_otp_page_success_authenticates_user(monkeypatch, verified_profile) -> N
 def test_otp_page_invalid_code_shows_error(monkeypatch) -> None:
     monkeypatch.setattr(
         AuthService,
-        "verify_signup_otp",
-        lambda self, email, token: ServiceResult(
+        "verify_own_code",
+        lambda self, email, code: ServiceResult(
             success=False, message="Código inválido ou expirado."
         ),
     )

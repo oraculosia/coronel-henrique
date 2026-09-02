@@ -2,10 +2,7 @@ import re
 
 import streamlit as st
 
-from src.auth.session import (
-    initialize_session,
-    set_authenticated_session,
-)
+from src.auth.session import initialize_session, set_authenticated_session
 from src.services.auth_service import AuthService
 from src.utils.validators import validate_email_address
 
@@ -33,11 +30,20 @@ with st.form("verify_otp_form"):
         placeholder="Código recebido por e-mail",
     )
 
-    submitted = st.form_submit_button(
-        "Confirmar código",
-        type="primary",
-        use_container_width=True,
-    )
+    col_confirm, col_resend = st.columns(2)
+
+    with col_confirm:
+        submitted = st.form_submit_button(
+            "Confirmar código",
+            type="primary",
+            use_container_width=True,
+        )
+
+    with col_resend:
+        resend_clicked = st.form_submit_button(
+            "📩 Reenviar código",
+            use_container_width=True,
+        )
 
 if submitted:
     email_ok, email_result = validate_email_address(email)
@@ -50,30 +56,57 @@ if submitted:
     else:
         with st.spinner("Validando código..."):
             service = AuthService()
-            result = service.verify_signup_otp(
+            result = service.verify_own_code(
                 email=email_result,
-                token=sanitized_token,
+                code=sanitized_token,
             )
 
-        if result.success and result.data:
-            profile_result = service.get_profile(
-                user_id=result.data["user_id"],
-                access_token=result.data["access_token"],
-            )
+        if result.success:
+            tokens = st.session_state.get("pending_verification_tokens") or {}
+            access_token = tokens.get("access_token")
+            refresh_token = tokens.get("refresh_token")
 
-            if profile_result.success and profile_result.data:
-                set_authenticated_session(
-                    access_token=result.data["access_token"],
-                    refresh_token=result.data["refresh_token"],
-                    profile=profile_result.data,
+            if access_token and refresh_token:
+                profile_result = service.get_profile(
+                    user_id=result.data["user_id"],
+                    access_token=access_token,
                 )
 
-                st.success("E-mail confirmado. Redirecionando para o painel...")
-                st.switch_page("pages/00_🏠_Início.py")
+                if profile_result.success and profile_result.data:
+                    set_authenticated_session(
+                        access_token=access_token,
+                        refresh_token=refresh_token,
+                        profile=profile_result.data,
+                    )
+                    st.success("E-mail confirmado. Redirecionando para o painel...")
+                    st.switch_page("pages/00_🏠_Dashboard.py")
+                else:
+                    st.error(profile_result.message)
             else:
-                st.error(profile_result.message)
+                # Sessão do cadastro não está mais disponível (ex.: aba
+                # fechada antes de confirmar) — pede login normal.
+                st.success("E-mail confirmado com sucesso! Faça login para continuar.")
+                st.page_link(
+                    "pages/05_🔐_Login.py",
+                    label="Ir para login",
+                    icon="🔐",
+                )
         else:
             st.error(result.message)
+
+if resend_clicked:
+    email_ok, email_result = validate_email_address(email)
+
+    if not email_ok:
+        st.error(f"E-mail inválido: {email_result}")
+    else:
+        with st.spinner("Reenviando código..."):
+            resend_result = AuthService().resend_own_code(email=email_result)
+
+        if resend_result.success:
+            st.success(resend_result.message)
+        else:
+            st.error(resend_result.message)
 
 st.divider()
 st.page_link(

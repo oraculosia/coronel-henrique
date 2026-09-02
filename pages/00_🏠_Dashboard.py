@@ -10,7 +10,7 @@ from src.services.supporter_service import SupporterService, find_duplicate_what
 from src.utils.formatting import display_job_title
 
 st.set_page_config(
-    page_title="Início | Campanha 2026",
+    page_title="Dashboard | Campanha 2026",
     page_icon="🏠",
 )
 
@@ -194,7 +194,7 @@ if not is_authenticated():
         """
         <section class="campaign-hero">
             <span class="campaign-eyebrow">CAMPANHA 2026</span>
-            <h1>Trabalho para<br>proteger o futuro</h1>
+            <h1>Trabalho para<br>proteger o futuro de Minas Gerais</h1>
             <p>
                 Uma plataforma para organizar parceiros, acompanhar metas diárias
                 e ampliar a rede de apoiadores da campanha.

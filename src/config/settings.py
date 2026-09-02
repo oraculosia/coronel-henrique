@@ -46,6 +46,16 @@ class Settings:
     )
     MAX_IMAGE_SIZE_MB = int(os.getenv("MAX_IMAGE_SIZE_MB", "3"))
 
+    # E-mail transacional (SMTP) — usado por src/services/notification.py
+    # para enviar o código de verificação próprio (não usa o e-mail do Supabase).
+    EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+    EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+    EMAIL_USERNAME = os.getenv("EMAIL_USERNAME", "")
+    EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
+    EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").strip().lower() == "true"
+    EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "false").strip().lower() == "true"
+    EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE", "")
+
     def foundation_errors(self) -> list[str]:
         return validate_foundation_settings(
             supabase_url=self.SUPABASE_URL,

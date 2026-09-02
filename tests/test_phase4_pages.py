@@ -92,7 +92,7 @@ def test_partner_dashboard_shows_metrics(monkeypatch) -> None:
         lambda self, partner_id: SupporterResult(success=True, message="ok", data=[]),
     )
 
-    at = AppTest.from_file(_page("00_🏠_Início.py"))
+    at = AppTest.from_file(_page("00_🏠_Dashboard.py"))
     _login_as(at, PARTNER_PROFILE)
     at.run()
 
@@ -110,7 +110,7 @@ def test_partner_dashboard_warns_when_not_linked(monkeypatch) -> None:
         lambda self, profile_id: PartnerResult(success=True, message="ok", data=None),
     )
 
-    at = AppTest.from_file(_page("00_🏠_Início.py"))
+    at = AppTest.from_file(_page("00_🏠_Dashboard.py"))
     _login_as(at, PARTNER_PROFILE)
     at.run()
 
@@ -170,7 +170,7 @@ def test_partner_dashboard_flags_duplicate_whatsapp(monkeypatch) -> None:
         ),
     )
 
-    at = AppTest.from_file(_page("00_🏠_Início.py"))
+    at = AppTest.from_file(_page("00_🏠_Dashboard.py"))
     _login_as(at, PARTNER_PROFILE)
     at.run(timeout=15)
 
@@ -232,7 +232,7 @@ def test_staff_dashboard_shows_ranking_and_metrics(monkeypatch) -> None:
         lambda self: SupporterResult(success=True, message="ok", data=[]),
     )
 
-    at = AppTest.from_file(_page("00_🏠_Início.py"))
+    at = AppTest.from_file(_page("00_🏠_Dashboard.py"))
     _login_as(at, STAFF_PROFILE)
     at.run(timeout=15)
 

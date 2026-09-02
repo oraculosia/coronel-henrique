@@ -3,7 +3,6 @@ import streamlit as st
 from src.auth.guards import require_authentication
 from src.auth.session import get_profile
 from src.services.ai_service import AIService
-from src.utils.formatting import resolve_avatar_path
 
 st.set_page_config(
     page_title="Assistente IA | Campanha 2026",
@@ -15,7 +14,6 @@ require_authentication()
 profile = get_profile() or {}
 access_token = st.session_state.get("access_token")
 role = profile.get("role")
-user_avatar = resolve_avatar_path(profile)
 
 st.title("🤖 Assistente IA")
 st.caption("Tire dúvidas sobre a campanha, parceiros, apoiadores e metas.")
@@ -39,8 +37,7 @@ if "ai_chat_history" not in st.session_state:
     ]
 
 for message in st.session_state["ai_chat_history"]:
-    avatar = user_avatar if message["role"] == "user" else None
-    with st.chat_message(message["role"], avatar=avatar):
+    with st.chat_message(message["role"]):
         st.write(message["content"])
         sources = message.get("sources")
         if sources:
@@ -48,17 +45,12 @@ for message in st.session_state["ai_chat_history"]:
                 for source in sources:
                     st.caption(f"📄 {source.get('title', '—')}")
 
-if st.button("🗑️ Limpar histórico", help="Limpa o histórico de conversas do Assistente IA."):
-    # Lista vazia (não remover a chave!): o bloco acima só recarrega o
-    # histórico do banco quando "ai_chat_history" NÃO existe em session_state.
-    st.session_state["ai_chat_history"] = []
-    st.rerun()
 
 question = st.chat_input("Digite sua pergunta...")
 
 if question:
     st.session_state["ai_chat_history"].append({"role": "user", "content": question})
-    with st.chat_message("user", avatar=user_avatar):
+    with st.chat_message("user"):
         st.write(question)
 
     with st.chat_message("assistant"):
@@ -78,3 +70,10 @@ if question:
             )
         else:
             st.error(result.message)
+
+with st.container(key="chat_clear_bar"):
+    if st.button("🗑️ Limpar histórico", help="Limpa o histórico de conversas do Assistente IA."):
+        # Lista vazia (não remover a chave!): o bloco acima só recarrega o
+        # histórico do banco quando "ai_chat_history" NÃO existe em session_state.
+        st.session_state["ai_chat_history"] = []
+        st.rerun()

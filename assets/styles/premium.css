@@ -362,3 +362,64 @@ button[kind="secondaryFormSubmit"]:hover {
     border: 2px solid var(--campaign-blue);
     box-shadow: 0 4px 12px rgba(0, 31, 63, 0.18);
 }
+
+/* =========================================================================
+   Assistente IA — botão "Limpar histórico" fixo acima do chat_input
+   ========================================================================= */
+
+.st-key-chat_clear_bar {
+    position: sticky;
+    bottom: 6rem;
+    z-index: 999;
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 0 0.5rem 0;
+}
+
+.st-key-chat_clear_bar .stButton > button {
+    box-shadow: 0 6px 16px rgba(0, 31, 63, 0.22);
+}
+
+/* =========================================================================
+   Assistente IA público — logo grande, pulsante, fixa no topo do chat
+   ========================================================================= */
+
+.st-key-public_chat_logo {
+    position: sticky;
+    top: 0;
+    z-index: 998;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    padding: 0.75rem 0 0.5rem 0;
+    margin: 0 0 0.5rem 0;
+    background: linear-gradient(
+        180deg,
+        #f7faff 0%,
+        #f7faff 70%,
+        rgba(247, 250, 255, 0) 100%
+    );
+}
+
+.st-key-public_chat_logo [data-testid="stElementContainer"],
+.st-key-public_chat_logo [data-testid="stFullScreenFrame"] {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.st-key-public_chat_logo img {
+    display: block;
+    border-radius: 50%;
+    animation: public-logo-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes public-logo-pulse {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(246, 197, 0, 0.55), 0 10px 26px rgba(0, 0, 0, 0.22);
+    }
+    50% {
+        box-shadow: 0 0 0 20px rgba(246, 197, 0, 0), 0 10px 26px rgba(0, 0, 0, 0.22);
+    }
+}
