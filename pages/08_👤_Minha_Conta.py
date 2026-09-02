@@ -2,8 +2,10 @@ import streamlit as st
 
 from src.auth.guards import require_authentication
 from src.auth.session import get_profile, set_authenticated_session
+from src.config.settings import settings
 from src.services.auth_service import AuthService
-from src.utils.formatting import role_label
+from src.utils.formatting import resolve_avatar_path, role_label
+from src.utils.uploads import validate_and_save_image
 from src.utils.validators import validate_password, validate_whatsapp
 
 
@@ -24,6 +26,34 @@ st.caption(
     "Atualize seus dados pessoais. O papel de autorização não pode ser "
     "alterado nesta tela."
 )
+
+current_avatar = resolve_avatar_path(profile)
+
+st.markdown("#### Foto de perfil")
+avatar_col, uploader_col = st.columns([1, 3], vertical_alignment="center")
+
+new_photo = uploader_col.file_uploader(
+    "Nova foto (opcional)",
+    type=["png", "jpg", "jpeg", "webp"],
+    key="account_avatar_uploader",
+)
+
+with avatar_col:
+    with st.container(key="account_avatar_preview"):
+        if new_photo is not None:
+            st.image(new_photo, width=110)
+        elif current_avatar:
+            st.image(current_avatar, width=110)
+        else:
+            st.markdown(
+                '<div class="sidebar-avatar-fallback">🧑</div>',
+                unsafe_allow_html=True,
+            )
+
+if new_photo is not None:
+    uploader_col.caption("Pré-visualização da nova foto — salve para confirmar.")
+
+st.divider()
 
 with st.form("account_form"):
     first_name = st.text_input(
@@ -100,6 +130,16 @@ if submitted:
         for error in errors:
             st.error(error)
     else:
+        avatar_path = current_avatar or ""
+        if new_photo is not None:
+            photo_ok, photo_result = validate_and_save_image(
+                new_photo, settings.PROFILE_IMAGE_DIR
+            )
+            if not photo_ok:
+                st.error(photo_result)
+                st.stop()
+            avatar_path = photo_result
+
         service = AuthService()
         result = service.update_own_profile(
             access_token=access_token,
@@ -108,6 +148,7 @@ if submitted:
             last_name=last_name,
             whatsapp=whatsapp_result,
             job_title=job_title.strip(),
+            avatar_path=avatar_path or None,
         )
 
         if not result.success:

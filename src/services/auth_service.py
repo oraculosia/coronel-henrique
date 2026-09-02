@@ -232,6 +232,7 @@ class AuthService:
         last_name: str,
         whatsapp: str,
         job_title: str,
+        avatar_path: str | None = None,
     ) -> ServiceResult:
         try:
             user_client = get_supabase()
@@ -243,6 +244,8 @@ class AuthService:
                 "whatsapp": whatsapp or None,
                 "job_title": job_title.strip() or None,
             }
+            if avatar_path is not None:
+                payload["avatar_path"] = avatar_path or None
 
             response = (
                 user_client.table("profiles")

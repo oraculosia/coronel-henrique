@@ -9,7 +9,7 @@ from src.auth.session import (
     is_authenticated,
 )
 from src.config.settings import settings
-from src.utils.formatting import display_job_title, role_label
+from src.utils.formatting import display_job_title, resolve_avatar_path, role_label
 
 
 st.set_page_config(
@@ -141,25 +141,40 @@ def _visible_menu_pages(role: str | None) -> list[st.Page]:
 
 
 def render_user_card() -> None:
-    """Card do usuário no topo da sidebar: nome · e-mail · papel."""
+    """Card do usuário no topo da sidebar: foto · nome · e-mail · papel."""
 
     profile = get_profile() or {}
     full_name = f"{profile.get('first_name', '')} {profile.get('last_name', '')}".strip()
     email = profile.get("email", "")
     role = role_label(profile.get("role"))
     cargo = display_job_title(profile)
+    avatar_path = resolve_avatar_path(profile)
 
-    st.markdown(
-        f"""
-        <div class="sidebar-user-card">
-            <span class="name">🧑 {full_name or 'Usuário'}</span>
-            <span class="email">{email}</span>
-            <span class="role-chip">{role}</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.caption(cargo)
+    with st.container(key="sidebar_user_card"):
+        col_avatar, col_data = st.columns([1, 2.4], vertical_alignment="center")
+
+        with col_avatar:
+            if avatar_path:
+                st.image(avatar_path, width=60)
+            else:
+                st.markdown(
+                    '<div class="sidebar-avatar-fallback">🧑</div>',
+                    unsafe_allow_html=True,
+                )
+
+        with col_data:
+            st.markdown(
+                f"""
+                <div class="sidebar-user-data">
+                    <span class="name">{full_name or 'Usuário'}</span>
+                    <span class="cargo">{cargo}</span>
+                    <span class="email">{email}</span>
+                    <span class="role-chip">{role}</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
     st.divider()
 
 
@@ -193,20 +208,9 @@ def render_account_section(pages: list[st.Page]) -> None:
 def render_authenticated_sidebar_footer() -> None:
     st.divider()
 
-    st.markdown('<div class="sidebar-footer-actions">', unsafe_allow_html=True)
-    col_sair, col_limpar = st.columns(2)
-
-    with col_sair:
-        if st.button("🚪 Sair", use_container_width=True):
-            clear_session()
-            st.rerun()
-
-    with col_limpar:
-        if st.button("🗑️ Limpar", use_container_width=True):
-            st.session_state.clear()
-            st.rerun()
-
-    st.markdown("</div>", unsafe_allow_html=True)
+    if st.button("🚪 Sair", use_container_width=True):
+        clear_session()
+        st.rerun()
 
 
 def main() -> None:
@@ -223,7 +227,8 @@ def main() -> None:
     pg = st.navigation(navigation_map, position="hidden")
 
     with st.sidebar:
-        st.logo("🎯", size="medium")
+        with st.container(key="sidebar_logo"):
+            st.image("assets/images/logo_coronel_henrique.png", width=132)
 
         if authenticated:
             render_user_card()
