@@ -136,24 +136,35 @@
     line-height: 1.55;
 }
 
-.stButton > button {
+.stButton > button,
+.stFormSubmitButton > button,
+button[kind="primary"],
+button[kind="primaryFormSubmit"],
+button[kind="secondary"],
+button[kind="secondaryFormSubmit"] {
     min-height: 46px;
-    border: 2px solid var(--campaign-blue);
-    border-radius: 8px;
-    background: var(--campaign-blue);
-    color: var(--campaign-white);
-    font-weight: 800;
+    border: 2px solid var(--campaign-blue) !important;
+    border-radius: 8px !important;
+    background: var(--campaign-blue) !important;
+    color: var(--campaign-white) !important;
+    font-weight: 800 !important;
     transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
 }
 
-.stButton > button:hover {
+.stButton > button:hover,
+.stFormSubmitButton > button:hover,
+button[kind="primary"]:hover,
+button[kind="primaryFormSubmit"]:hover,
+button[kind="secondary"]:hover,
+button[kind="secondaryFormSubmit"]:hover {
     transform: translateY(-2px);
-    border-color: var(--campaign-deep-blue);
-    background: var(--campaign-deep-blue);
+    border-color: var(--campaign-deep-blue) !important;
+    background: var(--campaign-deep-blue) !important;
     box-shadow: 0 8px 18px rgba(0, 59, 115, 0.24);
 }
 
-.stButton > button:focus {
+.stButton > button:focus,
+.stFormSubmitButton > button:focus {
     outline: 3px solid rgba(246, 197, 0, 0.55);
     outline-offset: 2px;
 }
@@ -204,4 +215,99 @@
     .campaign-hero h1 {
         font-size: 2.65rem;
     }
+}
+/* =========================================================================
+   Sidebar — modelo padrão (logo, card do usuário, menu, conta)
+   ========================================================================= */
+
+[data-testid="stSidebar"] [data-testid="stImage"] img {
+    display: block;
+    margin: 0.35rem auto 0.85rem auto;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(246, 197, 0, 0.75);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+}
+
+.sidebar-user-card {
+    padding: 0.85rem 1rem;
+    margin: 0 0 0.75rem 0;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-user-card .name {
+    display: block;
+    color: var(--campaign-white);
+    font-weight: 800;
+    font-size: 0.95rem;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-user-card .email {
+    display: block;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.78rem;
+    margin-top: 0.15rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-user-card .role-chip {
+    display: inline-block;
+    margin-top: 0.5rem;
+    padding: 0.18rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(246, 197, 0, 0.92);
+    color: var(--campaign-navy);
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.sidebar-guest-card {
+    padding: 0.9rem 1rem;
+    margin: 0 0 0.75rem 0;
+    border: 1px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+[data-testid="stSidebar"] hr {
+    border-color: rgba(255, 255, 255, 0.16) !important;
+    margin: 0.6rem 0;
+}
+
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
+    margin-bottom: 0;
+}
+
+.sidebar-section-label {
+    display: block;
+    margin: 0.2rem 0 0.35rem 0.1rem;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.sidebar-footer-actions [data-testid="stHorizontalBlock"] {
+    gap: 0.5rem;
+}
+
+.sidebar-footer-actions .stButton > button {
+    min-height: 40px;
+    font-size: 0.85rem;
 }

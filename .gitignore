@@ -13,8 +13,9 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 
-# Streamlit
-.streamlit/
+# Streamlit — mantém config.toml (tema versionado) fora do ignore
+.streamlit/*
+!.streamlit/config.toml
 
 # IDE e sistema
 .vscode/

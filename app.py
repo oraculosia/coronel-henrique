@@ -9,6 +9,7 @@ from src.auth.session import (
     is_authenticated,
 )
 from src.config.settings import settings
+from src.utils.formatting import display_job_title, role_label
 
 
 st.set_page_config(
@@ -108,7 +109,8 @@ def build_navigation() -> dict[str, list[st.Page]]:
     profile = get_profile() or {}
     role = profile.get("role")
 
-    menu_pages = [home_page, assistant_page]
+    # Ordem do modelo padrão: Assistente IA primeiro, depois Início.
+    menu_pages = [assistant_page, home_page]
 
     if role in {"super_admin", "admin", "parceiro"}:
         menu_pages += [supporters_page, goals_page]
@@ -123,18 +125,61 @@ def build_navigation() -> dict[str, list[st.Page]]:
     }
 
 
-def render_guest_sidebar_footer() -> None:
+def render_user_card() -> None:
+    """Card do usuário no topo da sidebar: nome · e-mail · papel."""
+
+    profile = get_profile() or {}
+    full_name = f"{profile.get('first_name', '')} {profile.get('last_name', '')}".strip()
+    email = profile.get("email", "")
+    role = role_label(profile.get("role"))
+    cargo = display_job_title(profile)
+
     with st.sidebar:
+        st.markdown(
+            f"""
+            <div class="sidebar-user-card">
+                <span class="name">🧑 {full_name or 'Usuário'}</span>
+                <span class="email">{email}</span>
+                <span class="role-chip">{role}</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.caption(cargo)
         st.divider()
-        st.info("Você ainda não está autenticado.")
+
+
+def render_guest_sidebar_header() -> None:
+    with st.sidebar:
+        st.markdown(
+            """
+            <div class="sidebar-guest-card">
+                Você ainda não está autenticado.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.divider()
 
 
 def render_authenticated_sidebar_footer() -> None:
     with st.sidebar:
         st.divider()
-        if st.button("🚪 Sair", use_container_width=True):
-            clear_session()
-            st.rerun()
+
+        st.markdown('<div class="sidebar-footer-actions">', unsafe_allow_html=True)
+        col_sair, col_limpar = st.columns(2)
+
+        with col_sair:
+            if st.button("🚪 Sair", use_container_width=True):
+                clear_session()
+                st.rerun()
+
+        with col_limpar:
+            if st.button("🗑️ Limpar", use_container_width=True):
+                st.session_state.clear()
+                st.rerun()
+
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
 def main() -> None:
@@ -147,12 +192,15 @@ def main() -> None:
 
     authenticated = is_authenticated()
 
+    if authenticated:
+        render_user_card()
+    else:
+        render_guest_sidebar_header()
+
     pg = st.navigation(build_navigation())
 
     if authenticated:
         render_authenticated_sidebar_footer()
-    else:
-        render_guest_sidebar_footer()
 
     pg.run()
 
