@@ -3,6 +3,7 @@ import streamlit as st
 from src.auth.guards import require_authentication
 from src.auth.session import get_profile
 from src.services.ai_service import AIService
+from src.utils.formatting import resolve_avatar_path
 
 st.set_page_config(
     page_title="Assistente IA | Campanha 2026",
@@ -14,6 +15,7 @@ require_authentication()
 profile = get_profile() or {}
 access_token = st.session_state.get("access_token")
 role = profile.get("role")
+user_avatar = resolve_avatar_path(profile)
 
 st.title("🤖 Assistente IA")
 st.caption("Tire dúvidas sobre a campanha, parceiros, apoiadores e metas.")
@@ -37,7 +39,8 @@ if "ai_chat_history" not in st.session_state:
     ]
 
 for message in st.session_state["ai_chat_history"]:
-    with st.chat_message(message["role"]):
+    avatar = user_avatar if message["role"] == "user" else None
+    with st.chat_message(message["role"], avatar=avatar):
         st.write(message["content"])
         sources = message.get("sources")
         if sources:
@@ -50,7 +53,7 @@ question = st.chat_input("Digite sua pergunta...")
 
 if question:
     st.session_state["ai_chat_history"].append({"role": "user", "content": question})
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar=user_avatar):
         st.write(question)
 
     with st.chat_message("assistant"):

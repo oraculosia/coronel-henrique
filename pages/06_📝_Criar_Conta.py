@@ -5,6 +5,7 @@ from src.config.settings import settings
 from src.services.auth_service import AuthService
 from src.utils.uploads import validate_and_save_image
 from src.utils.validators import (
+    normalize_email,
     validate_email_address,
     validate_password,
     validate_whatsapp,
@@ -111,7 +112,9 @@ if submitted:
     avatar_path = ""
     if profile_photo is not None:
         photo_ok, photo_result = validate_and_save_image(
-            profile_photo, settings.PROFILE_IMAGE_DIR
+            profile_photo,
+            settings.PROFILE_IMAGE_DIR,
+            filename_base=normalize_email(email),
         )
         if not photo_ok:
             errors.append(photo_result)

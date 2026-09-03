@@ -133,7 +133,9 @@ if submitted:
         avatar_path = current_avatar or ""
         if new_photo is not None:
             photo_ok, photo_result = validate_and_save_image(
-                new_photo, settings.PROFILE_IMAGE_DIR
+                new_photo,
+                settings.PROFILE_IMAGE_DIR,
+                filename_base=profile.get("email") or "",
             )
             if not photo_ok:
                 st.error(photo_result)

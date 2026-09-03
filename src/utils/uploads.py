@@ -1,3 +1,4 @@
+import re
 import uuid
 from pathlib import Path
 
@@ -5,11 +6,22 @@ from src.config.constants import ALLOWED_IMAGE_EXTENSIONS
 from src.config.settings import settings
 
 
+def _safe_filename_base(text: str) -> str:
+    """Sanitiza texto livre (ex.: e-mail) para uso seguro como nome de arquivo."""
+    return re.sub(r"[^a-z0-9@._-]", "_", text.strip().lower())
+
+
 def validate_and_save_image(
     uploaded_file,
     target_dir: Path,
+    filename_base: str = "",
 ) -> tuple[bool, str]:
     """Valida extensão/tamanho e salva a imagem localmente.
+
+    O nome do arquivo é o `filename_base` (normalmente o e-mail cadastrado)
+    + a extensão — assim um novo upload do mesmo usuário substitui a foto
+    anterior em vez de acumular arquivos. Sem `filename_base`, cai para um
+    nome aleatório.
 
     Retorna (ok, caminho_relativo_ou_mensagem_de_erro).
     """
@@ -29,7 +41,8 @@ def validate_and_save_image(
         return False, f"A imagem deve ter até {settings.MAX_IMAGE_SIZE_MB}MB."
 
     target_dir.mkdir(parents=True, exist_ok=True)
-    filename = f"{uuid.uuid4().hex}.{extension}"
+    base = _safe_filename_base(filename_base) if filename_base else uuid.uuid4().hex
+    filename = f"{base}.{extension}"
     destination = target_dir / filename
     destination.write_bytes(data)
 
