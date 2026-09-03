@@ -57,7 +57,7 @@ partners_page = st.Page(
     "pages/04_🤝_Parceiros.py", title="Parceiros", icon="🤝", url_path="parceiros"
 )
 login_page = st.Page(
-    "pages/05_🔐_Login.py", title="Entrar", icon="🔐", url_path="entrar"
+    "pages/05_🔐_Login.py", title="ENTRAR", icon="🔐", url_path="entrar"
 )
 signup_page = st.Page(
     "pages/06_📝_Criar_Conta.py",
@@ -189,7 +189,7 @@ def render_guest_sidebar_header() -> None:
     st.markdown(
         """
         <div class="sidebar-guest-card">
-            Você ainda não está autenticado.
+            Deputado Estadual/Coronel Henrique
         </div>
         """,
         unsafe_allow_html=True,
@@ -248,7 +248,7 @@ def main() -> None:
                 render_authenticated_sidebar_footer()
             else:
                 render_guest_sidebar_header()
-                render_menu_section([login_page, signup_page])
+                render_menu_section([login_page,])
 
     pg.run()
 

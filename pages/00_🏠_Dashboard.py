@@ -207,6 +207,7 @@ if not is_authenticated():
     left, right = st.columns(2)
 
     with left:
+        st.divider()
         if st.button(
             "Criar minha conta",
             type="primary",
@@ -215,6 +216,7 @@ if not is_authenticated():
             st.switch_page("pages/06_📝_Criar_Conta.py")
 
     with right:
+        st.divider()
         if st.button("Entrar", use_container_width=True):
             st.switch_page("pages/05_🔐_Login.py")
 
