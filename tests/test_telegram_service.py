@@ -32,9 +32,11 @@ def _mock_partner_chat_lookup(fake_admin_client: MagicMock, chat_id) -> None:
     )
 
 
-def test_notify_new_supporter_uses_partner_chat_id(
+def test_notify_new_supporter_always_uses_default_chat(
     monkeypatch, service: TelegramService, fake_admin_client: MagicMock
 ) -> None:
+    """notify_new_supporter é direcionada ao admin — ignora o
+    telegram_chat_id próprio do parceiro, mesmo que exista um configurado."""
     _mock_partner_chat_lookup(fake_admin_client, "999888")
 
     sent_calls = []
@@ -57,7 +59,7 @@ def test_notify_new_supporter_uses_partner_chat_id(
     )
 
     assert result.success
-    assert sent_calls[0]["chat_id"] == "999888"
+    assert sent_calls[0]["chat_id"] == "123"
     assert "Padaria" in sent_calls[0]["text"]
 
 
