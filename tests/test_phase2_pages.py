@@ -99,7 +99,9 @@ def test_login_success_redirects_home(monkeypatch, verified_profile) -> None:
     at.text_input[0].input(verified_profile["email"])
     at.text_input[1].input("William@2026")
     at.button[0].click()
-    at.run()
+    # Redireciona para o Dashboard, que faz várias chamadas reais ao Supabase
+    # (painel administrativo do super_admin); timeout maior evita flakiness.
+    at.run(timeout=15)
 
     assert at.session_state["authenticated"] is True
     assert at.session_state["profile"] == verified_profile

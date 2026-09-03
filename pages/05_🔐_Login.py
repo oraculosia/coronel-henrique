@@ -83,10 +83,3 @@ if submitted:
         else:
             st.error(result.message)
 
-st.divider()
-st.caption("Ainda não possui conta?")
-st.page_link(
-    "pages/06_📝_Criar_Conta.py",
-    label="Criar conta",
-    icon="📝",
-)

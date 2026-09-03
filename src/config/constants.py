@@ -21,6 +21,14 @@ VERIFICATION_STATUS = (
     "rejected",
 )
 
+# Rótulos amigáveis para o status de daily_goals (enum goal_status).
+GOAL_STATUS_LABELS = {
+    "active": "Em andamento",
+    "achieved": "Atingida",
+    "expired": "Expirada",
+    "cancelled": "Cancelada",
+}
+
 ALLOWED_IMAGE_EXTENSIONS = (
     "png",
     "jpg",

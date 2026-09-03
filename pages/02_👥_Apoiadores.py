@@ -5,6 +5,7 @@ from src.auth.session import get_profile
 from src.config.settings import settings
 from src.services.partner_service import PartnerService
 from src.services.supporter_service import SupporterService
+from src.utils.formatting import format_datetime_br
 
 st.set_page_config(
     page_title="Apoiadores | Campanha 2026",
@@ -75,15 +76,14 @@ elif not supporters:
     st.info("Ainda não há apoiadores cadastrados para este parceiro.")
 else:
     st.metric("Total de apoiadores", len(supporters))
-    st.dataframe(
-        supporters,
-        use_container_width=True,
-        hide_index=True,
-        column_order=[
-            "first_name",
-            "last_name",
-            "whatsapp",
-            "is_valid",
-            "created_at",
-        ],
-    )
+    table_rows = [
+        {
+            "Nome": supporter["first_name"],
+            "Sobrenome": supporter["last_name"],
+            "WhatsApp": supporter["whatsapp"],
+            "Válido": "Sim" if supporter["is_valid"] else "Não",
+            "Cadastrado em": format_datetime_br(supporter["created_at"]),
+        }
+        for supporter in supporters
+    ]
+    st.dataframe(table_rows, use_container_width=True, hide_index=True)

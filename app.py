@@ -100,6 +100,12 @@ public_ai_page = st.Page(
     url_path="agente-de-ia-coronel",
     visibility="hidden",
 )
+users_page = st.Page(
+    "pages/12_🛠️_Gestao_de_Usuarios.py",
+    title="Gestão de Usuários",
+    icon="🛠️",
+    url_path="usuarios",
+)
 
 
 def build_navigation() -> dict[str, list[st.Page]]:
@@ -128,6 +134,9 @@ def build_navigation() -> dict[str, list[st.Page]]:
         menu_pages.append(partners_page)
         menu_pages.append(knowledge_page)
 
+    if role == "super_admin":
+        menu_pages.append(users_page)
+
     return {
         "MENU": [*menu_pages, *hidden_pages],
         "CONTA": [account_page],
@@ -143,6 +152,9 @@ def _visible_menu_pages(role: str | None) -> list[st.Page]:
     if role in {"super_admin", "admin"}:
         menu_pages.append(partners_page)
         menu_pages.append(knowledge_page)
+
+    if role == "super_admin":
+        menu_pages.append(users_page)
 
     return menu_pages
 

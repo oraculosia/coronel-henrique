@@ -31,7 +31,7 @@ class PartnerService:
                 .select(
                     "id, public_slug, campaign_message, telegram_chat_id, "
                     "is_accepting_supporters, created_at, "
-                    "profiles(first_name, last_name, email)"
+                    "profiles!id(first_name, last_name, email)"
                 )
                 .order("created_at", desc=True)
                 .execute()

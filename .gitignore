@@ -5,6 +5,7 @@ venv/
 # Segredos
 .env
 .streamlit/secrets.toml
+streamlit_cloud_secrets.txt
 
 # Python
 __pycache__/

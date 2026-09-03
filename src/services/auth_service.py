@@ -8,6 +8,7 @@ from slugify import slugify
 from supabase_auth.errors import AuthApiError
 
 from src.database.supabase_client import get_supabase, get_supabase_admin
+from src.services.activity_log_service import log_activity
 from src.services.notification import Notificador
 from src.utils.validators import normalize_email
 
@@ -475,4 +476,96 @@ class AuthService:
                     "Os dados do perfil foram salvos, mas a senha "
                     "não pôde ser alterada agora."
                 ),
+            )
+
+    def list_all_profiles(self, access_token: str) -> ServiceResult:
+        """Todos os perfis do sistema, para a gestão de usuários do
+        super_admin. Só admin/super_admin (policy profiles_staff_manage)."""
+        try:
+            user_client = get_supabase()
+            user_client.postgrest.auth(access_token)
+
+            response = (
+                user_client.table("profiles")
+                .select(
+                    "id, first_name, last_name, email, role, is_active, "
+                    "verification_status, created_at"
+                )
+                .order("created_at", desc=True)
+                .execute()
+            )
+            return ServiceResult(success=True, message="ok", data=response.data or [])
+        except Exception:
+            return ServiceResult(
+                success=False,
+                message="Não foi possível carregar os usuários.",
+                data=[],
+            )
+
+    def list_auth_login_status(self) -> ServiceResult:
+        """Último login (last_sign_in_at) de cada usuário via Auth Admin API.
+
+        Usa service_role — só deve ser chamado a partir de uma página já
+        protegida por require_roles("super_admin").
+        """
+        try:
+            admin = get_supabase_admin()
+            listed = admin.auth.admin.list_users()
+            users = getattr(listed, "users", listed) or []
+            status = {
+                str(user.id): getattr(user, "last_sign_in_at", None)
+                for user in users
+            }
+            return ServiceResult(success=True, message="ok", data=status)
+        except Exception:
+            return ServiceResult(
+                success=False,
+                message="Não foi possível carregar o status de login.",
+                data={},
+            )
+
+    def set_profile_active_status(
+        self,
+        access_token: str,
+        actor_id: str,
+        user_id: str,
+        is_active: bool,
+    ) -> ServiceResult:
+        """Ativa/desativa uma conta. Só admin/super_admin (policy
+        profiles_staff_manage). Um usuário desativado não consegue mais
+        logar (bloqueado em pages/05_🔐_Login.py)."""
+        try:
+            user_client = get_supabase()
+            user_client.postgrest.auth(access_token)
+
+            response = (
+                user_client.table("profiles")
+                .update({"is_active": is_active})
+                .eq("id", user_id)
+                .execute()
+            )
+
+            if not response.data:
+                return ServiceResult(
+                    success=False,
+                    message="Não foi possível atualizar o usuário.",
+                )
+
+            log_activity(
+                user_client,
+                actor_id=actor_id,
+                entity_type="profile",
+                action="activated" if is_active else "deactivated",
+                entity_id=user_id,
+            )
+
+            return ServiceResult(
+                success=True,
+                message="Usuário ativado." if is_active else "Usuário desativado.",
+                data=response.data[0],
+            )
+        except Exception:
+            return ServiceResult(
+                success=False,
+                message="Não foi possível atualizar o usuário.",
             )

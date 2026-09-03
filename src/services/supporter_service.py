@@ -145,7 +145,7 @@ class SupporterService:
                 self.client.table("supporters")
                 .select(
                     "id, first_name, last_name, whatsapp, is_valid, created_at, "
-                    "partner_id, partners(public_slug, profiles(first_name, last_name))"
+                    "partner_id, partners(public_slug, profiles!id(first_name, last_name))"
                 )
                 .order("created_at", desc=True)
                 .execute()

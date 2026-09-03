@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 import pandas as pd
 import streamlit as st
@@ -7,7 +7,7 @@ from src.auth.session import get_profile, is_authenticated
 from src.services.goal_service import GoalService
 from src.services.partner_service import PartnerService
 from src.services.supporter_service import SupporterService, find_duplicate_whatsapp
-from src.utils.formatting import display_job_title
+from src.utils.formatting import display_job_title, format_date_br, goal_status_label
 
 st.set_page_config(
     page_title="Dashboard | Campanha 2026",
@@ -77,9 +77,17 @@ def _render_partner_dashboard(profile: dict, access_token: str) -> None:
     history = (goal_service.list_recent(partner_id=partner["id"])).data or []
     if history:
         st.caption("Histórico recente")
-        df_history = pd.DataFrame(history)[
-            ["goal_date", "target_count", "achieved_count", "status"]
-        ]
+        df_history = pd.DataFrame(
+            [
+                {
+                    "Data": format_date_br(entry["goal_date"]),
+                    "Meta": entry["target_count"],
+                    "Cadastros": entry["achieved_count"],
+                    "Status": goal_status_label(entry["status"]),
+                }
+                for entry in history
+            ]
+        )
         st.dataframe(df_history, use_container_width=True, hide_index=True)
 
     supporters = (supporter_service.list_for_partner(partner["id"])).data or []
@@ -113,9 +121,17 @@ def _render_staff_dashboard(access_token: str) -> None:
     supporter_service = SupporterService(access_token=access_token)
     today = date.today()
 
-    partners = (partner_service.list_partners()).data or []
-    goals_today = (goal_service.list_today_for_staff(goal_date=today)).data or []
-    supporters = (supporter_service.list_all_for_staff()).data or []
+    partners_result = partner_service.list_partners()
+    goals_today_result = goal_service.list_today_for_staff(goal_date=today)
+    supporters_result = supporter_service.list_all_for_staff()
+
+    for result in (partners_result, goals_today_result, supporters_result):
+        if not result.success:
+            st.error(result.message)
+
+    partners = partners_result.data or []
+    goals_today = goals_today_result.data or []
+    supporters = supporters_result.data or []
 
     st.divider()
     st.subheader("📊 Painel administrativo")
@@ -157,6 +173,51 @@ def _render_staff_dashboard(access_token: str) -> None:
             ]
         )
         st.dataframe(df_ranking, use_container_width=True, hide_index=True)
+
+    st.divider()
+    st.markdown("### 📅 Relatório semanal (últimos 7 dias)")
+
+    week_start = today - timedelta(days=6)
+    week_result = goal_service.list_range_for_staff(start_date=week_start, end_date=today)
+    if not week_result.success:
+        st.error(week_result.message)
+    week_goals = week_result.data or []
+
+    if not week_goals:
+        st.info("Nenhuma meta criada nos últimos 7 dias.")
+    else:
+        week_target = sum(g["target_count"] for g in week_goals)
+        week_achieved = sum(g["achieved_count"] for g in week_goals)
+        week_achieved_days = sum(1 for g in week_goals if g["status"] == "achieved")
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Meta da semana", week_target)
+        with col2:
+            st.metric("Cadastros na semana", week_achieved)
+        with col3:
+            st.metric("Metas diárias atingidas", week_achieved_days)
+
+        by_partner: dict[str, dict] = {}
+        for entry in week_goals:
+            label = _partner_label(entry)
+            bucket = by_partner.setdefault(label, {"target": 0, "achieved": 0})
+            bucket["target"] += entry["target_count"]
+            bucket["achieved"] += entry["achieved_count"]
+
+        df_week = pd.DataFrame(
+            [
+                {
+                    "Parceiro": label,
+                    "Meta (semana)": totals["target"],
+                    "Cadastros (semana)": totals["achieved"],
+                }
+                for label, totals in sorted(
+                    by_partner.items(), key=lambda item: item[1]["achieved"], reverse=True
+                )
+            ]
+        )
+        st.dataframe(df_week, use_container_width=True, hide_index=True)
 
     st.divider()
     st.markdown("### 🔎 Duplicidade de cadastros")
