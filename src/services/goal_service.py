@@ -155,7 +155,7 @@ class GoalService:
                 self.client.table("daily_goals")
                 .select(
                     "id, partner_id, target_count, achieved_count, status, "
-                    "partners(public_slug, profiles!id(first_name, last_name))"
+                    "partners(public_slug, profiles!partners_id_fkey(first_name, last_name))"
                 )
                 .eq("goal_date", goal_date.isoformat())
                 .order("achieved_count", desc=True)
@@ -177,7 +177,7 @@ class GoalService:
                 self.client.table("daily_goals")
                 .select(
                     "id, partner_id, goal_date, target_count, achieved_count, "
-                    "status, partners(public_slug, profiles!id(first_name, last_name))"
+                    "status, partners(public_slug, profiles!partners_id_fkey(first_name, last_name))"
                 )
                 .gte("goal_date", start_date.isoformat())
                 .lte("goal_date", end_date.isoformat())
