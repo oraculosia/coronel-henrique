@@ -94,7 +94,19 @@ class SupporterService:
                 data=rows[0],
             )
 
-        except Exception:
+        except Exception as error:
+            message = str(error).lower()
+            if (
+                "duplicate key" in message
+                or "supporters_unique_name_whatsapp_per_partner" in message
+            ):
+                return ServiceResult(
+                    success=False,
+                    message=(
+                        "Este apoiador (mesmo nome, sobrenome e WhatsApp) já "
+                        "está cadastrado para este parceiro."
+                    ),
+                )
             return ServiceResult(
                 success=False,
                 message=(

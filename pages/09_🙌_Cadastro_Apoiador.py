@@ -194,10 +194,11 @@ if submitted:
             telegram = TelegramService()
             telegram.notify_new_supporter(
                 partner_id=partner["id"],
-                partner_label=partner_label,
+                partner_label=partner.get("campaign_message") or "",
                 supporter_id=supporter.get("id", ""),
                 first_name=first_name,
                 last_name=last_name,
+                phone=whatsapp_result,
             )
             telegram.notify_goal_if_reached(
                 partner_id=partner["id"],

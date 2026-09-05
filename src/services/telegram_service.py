@@ -87,6 +87,28 @@ class TelegramService:
 
         return ServiceResult(success=True, message="Notificação enviada com sucesso.")
 
+    def _resolve_partner_label(self, partner_id: str, partner_label: str) -> str:
+        """Usa o nome do parceiro (profiles) quando a campanha não definiu campaign_message."""
+        if partner_label:
+            return partner_label
+        try:
+            response = (
+                self.admin_client.table("profiles")
+                .select("first_name, last_name")
+                .eq("id", partner_id)
+                .limit(1)
+                .execute()
+            )
+            rows = response.data or []
+            name = (
+                f"{rows[0].get('first_name', '')} {rows[0].get('last_name', '')}".strip()
+                if rows
+                else ""
+            )
+            return f"esta {name}" if name else "esta campanha"
+        except Exception:
+            return "esta campanha"
+
     def notify_new_supporter(
         self,
         partner_id: str,
@@ -98,6 +120,7 @@ class TelegramService:
         created_at: datetime | str | None = None,
     ) -> ServiceResult:
         """Notifica o admin sobre o cadastro de um novo apoiador."""
+        partner_label = self._resolve_partner_label(partner_id, partner_label)
         if isinstance(created_at, datetime):
             dt_br = created_at.astimezone(self.tz_br) if created_at.tzinfo else created_at.replace(tzinfo=self.tz_br)
             formatted_date = dt_br.strftime("%d/%m/%Y às %H:%M")

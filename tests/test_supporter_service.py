@@ -111,6 +111,29 @@ def test_register_public_insert_failure(
     assert not result.success
 
 
+def test_register_public_duplicate_supporter(
+    service: SupporterService, fake_client: MagicMock
+) -> None:
+    fake_client.table.return_value.insert.return_value.execute.side_effect = (
+        RuntimeError(
+            "duplicate key value violates unique constraint "
+            '"supporters_unique_name_whatsapp_per_partner"'
+        )
+    )
+
+    result = service.register_public(
+        partner_id="p1",
+        slug="padaria",
+        first_name="Ana",
+        last_name="Silva",
+        whatsapp="+5531999999999",
+        consent_lgpd=True,
+    )
+
+    assert not result.success
+    assert "já está cadastrado" in result.message.lower()
+
+
 def test_list_for_partner_returns_rows(
     service: SupporterService, fake_client: MagicMock
 ) -> None:
