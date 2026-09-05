@@ -15,6 +15,129 @@ st.set_page_config(
     layout="centered",
 )
 
+# Identidade visual oficial: azul institucional como base, branco para leitura e verde como ação.
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+
+    :root {
+        --ch-blue-bg: #163259;
+        --ch-blue-surface: #1e4273;
+        --ch-blue-inner: #122847;
+        --ch-green: #00a859;
+        --ch-green-hover: #008f4c;
+        --ch-yellow: #ffc72c;
+        --ch-white: #ffffff;
+    }
+
+    /* Fundo azul institucional em toda a página e componentes nativos */
+    html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"],
+    [data-testid="stToolbar"], .main, section[data-testid="stSidebar"] {
+        background-color: var(--ch-blue-bg) !important;
+        color: var(--ch-white) !important;
+        font-family: 'Inter', sans-serif !important;
+    }
+
+    /* Sidebar com tom flutuante: borda, cantos arredondados e sombra */
+    section[data-testid="stSidebar"] {
+        border: 3px solid var(--ch-yellow) !important;
+        border-radius: 18px !important;
+        margin: 14px 0 14px 14px !important;
+        box-shadow: 0 14px 34px rgba(0, 0, 0, .35) !important;
+        overflow: hidden !important;
+    }
+
+    section[data-testid="stSidebar"] > div {
+        border-radius: 18px !important;
+    }
+
+    h1, h2, h3, h4, h5, h6,
+    [data-testid="stMarkdownContainer"] h1,
+    [data-testid="stMarkdownContainer"] h2 {
+        color: var(--ch-white) !important;
+        font-family: 'Montserrat', sans-serif !important;
+        font-weight: 800 !important;
+    }
+
+    p, span, label, div, small {
+        color: var(--ch-white) !important;
+    }
+
+    /* Formulário sem fundo claro e sem bordas */
+    [data-testid="stForm"] {
+        background: var(--ch-blue-surface) !important;
+        border: none !important;
+        border-radius: 16px !important;
+        padding: 26px 24px !important;
+        box-shadow: 0 9px 24px rgba(0, 0, 0, .20) !important;
+    }
+
+    [data-testid="stForm"] label {
+        color: var(--ch-white) !important;
+        font-size: 14px !important;
+        font-weight: 700 !important;
+    }
+
+    [data-testid="stTextInput"] input {
+        background-color: var(--ch-blue-inner) !important;
+        color: var(--ch-white) !important;
+        border: none !important;
+        border-radius: 10px !important;
+        font-size: 15px !important;
+    }
+
+    [data-testid="stTextInput"] input::placeholder {
+        color: rgba(255, 255, 255, .65) !important;
+    }
+
+    [data-testid="stTextInput"] input:focus {
+        box-shadow: 0 0 0 2px var(--ch-green) !important;
+    }
+
+    [data-testid="stFileUploader"] {
+        background-color: var(--ch-blue-surface) !important;
+        border: 1px dashed rgba(255, 255, 255, .35) !important;
+        border-radius: 12px !important;
+    }
+
+    .sidebar-avatar-fallback {
+        background-color: var(--ch-blue-inner) !important;
+        color: var(--ch-white) !important;
+        border-radius: 50%;
+        width: 110px;
+        height: 110px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 42px;
+    }
+
+    /* Botão primário verde, sem bordas */
+    div.stFormSubmitButton > button,
+    div.stButton > button[kind="primary"] {
+        background: var(--ch-green) !important;
+        color: var(--ch-white) !important;
+        border: none !important;
+        border-radius: 12px !important;
+        font-weight: 800 !important;
+        font-size: 16px !important;
+        padding: 12px 22px !important;
+        box-shadow: 0 6px 18px rgba(0, 168, 89, .38) !important;
+        transition: all .2s ease !important;
+    }
+
+    div.stFormSubmitButton > button:hover,
+    div.stButton > button[kind="primary"]:hover {
+        background: var(--ch-green-hover) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 22px rgba(0, 168, 89, .52) !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 require_authentication()
 
 profile = get_profile() or {}
