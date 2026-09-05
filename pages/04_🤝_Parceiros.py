@@ -417,7 +417,8 @@ else:
             """,
             unsafe_allow_html=True,
         )
-        st.code(f"?p={partner.get('public_slug')}", language=None)
+        partner_public_url = f"{settings.APP_BASE_URL}/apoiar?p={partner.get('public_slug')}"
+        st.code(partner_public_url, language=None)
 
         with st.form(f"edit_partner_{partner.get('id')}"):
             st.markdown("#### ⚙️ Configurações do Parceiro")
