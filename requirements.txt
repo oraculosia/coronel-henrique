@@ -10,4 +10,5 @@ email-validator>=2.2.0
 python-slugify>=8.0.4
 phonenumbers>=8.13.50
 requests>=2.31.0
+rapidfuzz>=3.9.0
 pytest>=8.3.0

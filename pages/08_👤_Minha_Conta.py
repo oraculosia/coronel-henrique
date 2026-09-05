@@ -31,25 +31,12 @@ st.markdown(
         --ch-white: #ffffff;
     }
 
-    /* Fundo azul institucional em toda a página e componentes nativos */
+    /* Fundo azul institucional apenas na área principal, sem alterar a sidebar */
     html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"],
-    [data-testid="stToolbar"], .main, section[data-testid="stSidebar"] {
+    [data-testid="stToolbar"], .main {
         background-color: var(--ch-blue-bg) !important;
         color: var(--ch-white) !important;
         font-family: 'Inter', sans-serif !important;
-    }
-
-    /* Sidebar com tom flutuante: borda, cantos arredondados e sombra */
-    section[data-testid="stSidebar"] {
-        border: 3px solid var(--ch-yellow) !important;
-        border-radius: 18px !important;
-        margin: 14px 0 14px 14px !important;
-        box-shadow: 0 14px 34px rgba(0, 0, 0, .35) !important;
-        overflow: hidden !important;
-    }
-
-    section[data-testid="stSidebar"] > div {
-        border-radius: 18px !important;
     }
 
     h1, h2, h3, h4, h5, h6,
@@ -101,7 +88,7 @@ st.markdown(
         border-radius: 12px !important;
     }
 
-    .sidebar-avatar-fallback {
+    .account-avatar-fallback {
         background-color: var(--ch-blue-inner) !important;
         color: var(--ch-white) !important;
         border-radius: 50%;
@@ -169,7 +156,7 @@ with avatar_col:
             st.image(current_avatar, width=110)
         else:
             st.markdown(
-                '<div class="sidebar-avatar-fallback">🧑</div>',
+                '<div class="account-avatar-fallback">🧑</div>',
                 unsafe_allow_html=True,
             )
 

@@ -128,10 +128,9 @@ def build_navigation() -> dict[str, list[st.Page]]:
     menu_pages = [assistant_page, home_page]
 
     if role in {"super_admin", "admin", "parceiro"}:
-        menu_pages += [supporters_page, goals_page]
+        menu_pages += [supporters_page, goals_page, partners_page]
 
     if role in {"super_admin", "admin"}:
-        menu_pages.append(partners_page)
         menu_pages.append(knowledge_page)
 
     if role == "super_admin":
@@ -147,10 +146,9 @@ def _visible_menu_pages(role: str | None) -> list[st.Page]:
     menu_pages = [assistant_page, home_page]
 
     if role in {"super_admin", "admin", "parceiro"}:
-        menu_pages += [supporters_page, goals_page]
+        menu_pages += [supporters_page, goals_page, partners_page]
 
     if role in {"super_admin", "admin"}:
-        menu_pages.append(partners_page)
         menu_pages.append(knowledge_page)
 
     if role == "super_admin":

@@ -47,12 +47,15 @@ PARTNER_RECORD = {
 
 
 # ---------------------------------------------------------------------------
-# Parceiros (admin/super_admin)
+# Parceiros (admin/super_admin/parceiro)
 # ---------------------------------------------------------------------------
 
 
 def test_partners_page_lists_existing_partners(monkeypatch, verified_profile) -> None:
+    from src.services.auth_service import AuthService
+    from src.services.auth_service import ServiceResult as AuthResult
     from src.services.partner_service import ServiceResult as PartnerResult
+    from src.services.supporter_service import ServiceResult as SupporterResult
 
     monkeypatch.setattr(PartnerService, "__init__", lambda self, access_token: None)
     monkeypatch.setattr(
@@ -78,6 +81,20 @@ def test_partners_page_lists_existing_partners(monkeypatch, verified_profile) ->
             ],
         ),
     )
+    monkeypatch.setattr(AuthService, "__init__", lambda self: None)
+    monkeypatch.setattr(
+        AuthService,
+        "list_all_profiles",
+        lambda self, access_token: AuthResult(success=True, message="ok", data=[]),
+    )
+    monkeypatch.setattr(
+        SupporterService, "__init__", lambda self, access_token=None: None
+    )
+    monkeypatch.setattr(
+        SupporterService,
+        "list_all_for_staff",
+        lambda self: SupporterResult(success=True, message="ok", data=[]),
+    )
 
     at = AppTest.from_file(_page("04_🤝_Parceiros.py"))
     _login_as(at, verified_profile)
@@ -87,12 +104,60 @@ def test_partners_page_lists_existing_partners(monkeypatch, verified_profile) ->
     assert any("William" in md.value for md in at.markdown)
 
 
-def test_partners_page_blocks_non_admin(monkeypatch) -> None:
+def test_partners_page_blocks_non_staff(monkeypatch) -> None:
+    supporter_profile = {
+        "id": "33333333-3333-3333-3333-333333333333",
+        "first_name": "Ana",
+        "last_name": "Souza",
+        "email": "apoiadora@exemplo.com",
+        "role": "apoiador",
+    }
+
+    at = AppTest.from_file(_page("04_🤝_Parceiros.py"))
+    _login_as(at, supporter_profile)
+    at.run()
+
+    assert any(e.value for e in at.error)
+
+
+def test_partners_page_partner_sees_own_supporters(monkeypatch) -> None:
+    from src.services.partner_service import ServiceResult as PartnerResult
+    from src.services.supporter_service import ServiceResult as SupporterResult
+
+    monkeypatch.setattr(PartnerService, "__init__", lambda self, access_token: None)
+    monkeypatch.setattr(
+        PartnerService,
+        "get_partner_for_profile",
+        lambda self, profile_id: PartnerResult(success=True, message="ok", data=PARTNER_RECORD),
+    )
+    monkeypatch.setattr(
+        SupporterService, "__init__", lambda self, access_token=None: None
+    )
+    monkeypatch.setattr(
+        SupporterService,
+        "list_for_partner",
+        lambda self, partner_id: SupporterResult(
+            success=True,
+            message="ok",
+            data=[
+                {
+                    "id": "s1",
+                    "first_name": "Tony",
+                    "last_name": "Stark",
+                    "whatsapp": "+5531999999999",
+                    "is_valid": True,
+                    "created_at": "2026-09-01T10:00:00+00:00",
+                }
+            ],
+        ),
+    )
+
     at = AppTest.from_file(_page("04_🤝_Parceiros.py"))
     _login_as(at, _partner_profile())
     at.run()
 
-    assert any(e.value for e in at.error)
+    assert not at.exception
+    assert any("Meus Apoiadores" in tab.label for tab in at.tabs)
 
 
 # ---------------------------------------------------------------------------
