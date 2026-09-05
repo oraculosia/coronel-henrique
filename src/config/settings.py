@@ -56,6 +56,17 @@ class Settings:
     EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "false").strip().lower() == "true"
     EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE", "")
 
+    # Vídeo de boas-vindas (e-mail do apoiador) — servido via Streamlit
+    # static serving (.streamlit/config.toml: enableStaticServing = true),
+    # arquivos em static/. Pode ser sobrescrito por URL externa (ex.: CDN).
+    WELCOME_EMAIL_VIDEO_URL = os.getenv(
+        "WELCOME_EMAIL_VIDEO_URL", f"{APP_BASE_URL}/app/static/video.mp4"
+    )
+    WELCOME_EMAIL_VIDEO_THUMBNAIL_URL = os.getenv(
+        "WELCOME_EMAIL_VIDEO_THUMBNAIL_URL",
+        f"{APP_BASE_URL}/app/static/video-thumbnail.jpg",
+    )
+
     def foundation_errors(self) -> list[str]:
         return validate_foundation_settings(
             supabase_url=self.SUPABASE_URL,

@@ -57,6 +57,7 @@ class SupporterService:
         last_name: str,
         whatsapp: str,
         consent_lgpd: bool,
+        email: str = "",
         source_utm: dict[str, Any] | None = None,
         avatar_path: str = "",
     ) -> ServiceResult:
@@ -72,6 +73,7 @@ class SupporterService:
                 "first_name": first_name.strip(),
                 "last_name": last_name.strip(),
                 "whatsapp": whatsapp,
+                "email": email.strip().lower() if email else None,
                 "avatar_path": avatar_path or None,
                 "source_slug": slug,
                 "source_utm": source_utm or {},

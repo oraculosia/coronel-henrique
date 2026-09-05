@@ -4,6 +4,7 @@ Não usa o serviço de e-mail do Supabase Auth — o código de verificação de
 cadastro é gerado pela aplicação (ver AuthService) e enviado por aqui.
 """
 import base64
+import re
 import smtplib
 import ssl
 from email.mime.multipart import MIMEMultipart
@@ -13,6 +14,14 @@ from pathlib import Path
 from src.config.settings import settings
 
 _LOGO_PATH = Path("assets/images/logo_coronel_henrique.png")
+_WELCOME_TEMPLATE_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "documentos"
+    / "template_email_boas_vindas_apoiador.html"
+)
+_VIDEO_SECTION_RE = re.compile(
+    r"<!-- VIDEO_SECTION_START -->.*?<!-- VIDEO_SECTION_END -->", re.DOTALL
+)
 
 
 def _get_logo_base64() -> str:
@@ -184,6 +193,41 @@ class Notificador:
             destino=destino,
             assunto="🔐 Campanha 2026 — Código de Verificação",
             mensagem=mensagem,
+        )
+
+    def enviar_boas_vindas_apoiador(
+        self,
+        destino: str,
+        nome_apoiador: str,
+        nome_parceiro: str,
+        link_cadastro_parceiro: str,
+    ) -> dict:
+        """Envia o e-mail de boas-vindas ao apoiador usando o template oficial
+        (documentos/template_email_boas_vindas_apoiador.html)."""
+        primeiro_nome = nome_apoiador.split(" ")[0] if nome_apoiador else "Apoiador"
+        html = _WELCOME_TEMPLATE_PATH.read_text(encoding="utf-8")
+
+        video_url = settings.WELCOME_EMAIL_VIDEO_URL
+        thumbnail_url = settings.WELCOME_EMAIL_VIDEO_THUMBNAIL_URL
+        if video_url and thumbnail_url:
+            html = html.replace("{{URL_VIDEO_MP4}}", video_url).replace(
+                "{{URL_THUMBNAIL_VIDEO}}", thumbnail_url
+            )
+        else:
+            # Sem vídeo configurado: remove a seção para não deixar imagem/link quebrado.
+            html = _VIDEO_SECTION_RE.sub("", html)
+
+        html = (
+            html.replace("{{URL_IMAGEM_CORONEL}}", f"data:image/png;base64,{_get_logo_base64()}")
+            .replace("{{NOME_APOIADOR}}", primeiro_nome)
+            .replace("{{NOME_PARCEIRO}}", nome_parceiro or "nossa equipe")
+            .replace("{{LINK_CADASTRO_PARCEIRO}}", link_cadastro_parceiro or "")
+        )
+
+        return self.enviar_email(
+            destino=destino,
+            assunto="🙌 Bem-vindo à Campanha Coronel Henrique!",
+            mensagem=html,
         )
 
     def testar_envio(self, destino: str) -> dict:

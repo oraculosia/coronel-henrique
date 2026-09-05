@@ -1,8 +1,10 @@
 import streamlit as st
 
+from src.config.settings import settings
+from src.services.notification import Notificador
 from src.services.supporter_service import SupporterService
 from src.services.telegram_service import TelegramService
-from src.utils.validators import validate_whatsapp
+from src.utils.validators import validate_email_address, validate_whatsapp
 
 st.set_page_config(
     page_title="Cadastro de Apoiador | Campanha 2026",
@@ -147,6 +149,7 @@ with st.form("supporter_signup_form"):
     first_name = st.text_input("Nome", max_chars=100)
     last_name = st.text_input("Sobrenome", max_chars=100)
     whatsapp = st.text_input("WhatsApp", placeholder="(31) 99999-9999")
+    email = st.text_input("E-mail", placeholder="voce@email.com")
     consent_lgpd = st.checkbox(
         "Autorizo o uso dos meus dados para os fins desta campanha (LGPD)."
     )
@@ -168,6 +171,10 @@ if submitted:
     if not whatsapp_ok:
         errors.append(whatsapp_result)
 
+    email_ok, email_result = validate_email_address(email)
+    if not email_ok:
+        errors.append(f"E-mail inválido: {email_result}")
+
     if not consent_lgpd:
         errors.append("É necessário autorizar o uso dos dados (LGPD) para continuar.")
 
@@ -182,6 +189,7 @@ if submitted:
                 first_name=first_name,
                 last_name=last_name,
                 whatsapp=whatsapp_result,
+                email=email_result,
                 consent_lgpd=consent_lgpd,
             )
 
@@ -204,4 +212,14 @@ if submitted:
                 partner_id=partner["id"],
                 partner_label=partner_label,
             )
+
+            try:
+                Notificador().enviar_boas_vindas_apoiador(
+                    destino=email_result,
+                    nome_apoiador=first_name,
+                    nome_parceiro=partner_label,
+                    link_cadastro_parceiro=f"{settings.APP_BASE_URL}/apoiar?p={slug}",
+                )
+            except Exception:
+                pass  # falha no envio do e-mail não deve impedir a confirmação do cadastro
 

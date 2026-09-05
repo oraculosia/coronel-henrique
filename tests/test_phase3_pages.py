@@ -371,6 +371,7 @@ def test_public_signup_requires_whatsapp_and_consent(monkeypatch) -> None:
 
 
 def test_public_signup_success_notifies_telegram(monkeypatch) -> None:
+    from src.services.notification import Notificador
     from src.services.supporter_service import ServiceResult as SupporterResult
 
     monkeypatch.setattr(SupporterService, "__init__", lambda self, access_token=None: None)
@@ -403,6 +404,12 @@ def test_public_signup_success_notifies_telegram(monkeypatch) -> None:
         "notify_goal_if_reached",
         lambda self, **kwargs: notified.setdefault("goal_reached", kwargs),
     )
+    monkeypatch.setattr(Notificador, "__init__", lambda self: None)
+    monkeypatch.setattr(
+        Notificador,
+        "enviar_boas_vindas_apoiador",
+        lambda self, **kwargs: notified.setdefault("welcome_email", kwargs),
+    )
 
     at = AppTest.from_file(_page("09_🙌_Cadastro_Apoiador.py"))
     at.query_params["p"] = "padaria"
@@ -411,6 +418,7 @@ def test_public_signup_success_notifies_telegram(monkeypatch) -> None:
     at.text_input[0].input("Ana")
     at.text_input[1].input("Silva")
     at.text_input[2].input("31999999999")
+    at.text_input[3].input("ana@example.com")
     at.checkbox[0].check()
     at.button[0].click()
     at.run()
@@ -419,3 +427,4 @@ def test_public_signup_success_notifies_telegram(monkeypatch) -> None:
     assert any("sucesso" in s.value.lower() for s in at.success)
     assert notified["new_supporter"]["supporter_id"] == "s1"
     assert notified["goal_reached"]["partner_id"] == PARTNER_RECORD["id"]
+    assert notified["welcome_email"]["destino"] == "ana@example.com"

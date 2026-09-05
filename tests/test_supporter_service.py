@@ -58,6 +58,7 @@ def test_register_public_requires_consent(service: SupporterService) -> None:
         first_name="Ana",
         last_name="Silva",
         whatsapp="+5531999999999",
+        email="ana@example.com",
         consent_lgpd=False,
     )
 
@@ -78,6 +79,7 @@ def test_register_public_success_sets_consent_and_defaults(
         first_name="Ana",
         last_name="Silva",
         whatsapp="+5531999999999",
+        email="Ana@Example.com",
         consent_lgpd=True,
     )
 
@@ -86,6 +88,7 @@ def test_register_public_success_sets_consent_and_defaults(
     payload = fake_client.table.return_value.insert.call_args.args[0]
     assert payload["partner_id"] == "p1"
     assert payload["source_slug"] == "padaria"
+    assert payload["email"] == "ana@example.com"
     assert payload["consent_lgpd"] is True
     assert payload["consent_at"] is not None
     assert payload["is_valid"] is True
@@ -105,6 +108,7 @@ def test_register_public_insert_failure(
         first_name="Ana",
         last_name="Silva",
         whatsapp="+5531999999999",
+        email="ana@example.com",
         consent_lgpd=True,
     )
 
@@ -127,6 +131,7 @@ def test_register_public_duplicate_supporter(
         first_name="Ana",
         last_name="Silva",
         whatsapp="+5531999999999",
+        email="ana@example.com",
         consent_lgpd=True,
     )
 
