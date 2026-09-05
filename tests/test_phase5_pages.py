@@ -40,6 +40,14 @@ STAFF_PROFILE = {
     "role": "admin",
 }
 
+SUPER_ADMIN_PROFILE = {
+    "id": "33333333-3333-3333-3333-333333333333",
+    "first_name": "Rafael",
+    "last_name": "Super",
+    "email": "super@exemplo.com",
+    "role": "super_admin",
+}
+
 
 def test_assistant_page_shows_history_and_answers_question(monkeypatch) -> None:
     monkeypatch.setattr(AIService, "__init__", lambda self, access_token: None)
@@ -102,6 +110,14 @@ def test_knowledge_page_blocks_non_staff() -> None:
     assert any(e.value for e in at.error)
 
 
+def test_knowledge_page_blocks_admin() -> None:
+    at = AppTest.from_file(_page("10_📚_Base_de_Conhecimento.py"))
+    _login_as(at, STAFF_PROFILE)
+    at.run()
+
+    assert any(e.value for e in at.error)
+
+
 def test_knowledge_page_lists_documents_for_staff(monkeypatch) -> None:
     monkeypatch.setattr(KnowledgeService, "__init__", lambda self, access_token: None)
     monkeypatch.setattr(
@@ -130,7 +146,7 @@ def test_knowledge_page_lists_documents_for_staff(monkeypatch) -> None:
     )
 
     at = AppTest.from_file(_page("10_📚_Base_de_Conhecimento.py"))
-    _login_as(at, STAFF_PROFILE)
+    _login_as(at, SUPER_ADMIN_PROFILE)
     at.run()
 
     assert not at.exception

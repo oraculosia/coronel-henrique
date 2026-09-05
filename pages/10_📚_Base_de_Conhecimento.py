@@ -222,7 +222,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-require_roles("super_admin", "admin")
+require_roles("super_admin")
 
 profile = get_profile() or {}
 access_token = st.session_state.get("access_token")
