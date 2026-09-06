@@ -47,16 +47,6 @@ def _wants_to_become_supporter(text: str) -> bool:
     return any(keyword in normalized for keyword in SUPPORTER_INTENT_KEYWORDS)
 
 
-def _clear_chat_history() -> None:
-    """Callback do botão Limpar Conversa: reseta o histórico do chat público."""
-    st.session_state["public_chat_history"] = [
-        {
-            "role": "assistant",
-            "content": "Conversa reiniciada. Como posso ajudar você agora?",
-        }
-    ]
-
-
 def apply_custom_styles() -> None:
     """Aplica o Design System oficial: 100% Azul Institucional com toques verde e dourado vibrante."""
     st.markdown(
@@ -257,30 +247,6 @@ def apply_custom_styles() -> None:
             border-color: var(--ch-yellow-solid) !important;
             color: var(--ch-yellow-solid) !important;
             transform: translateY(-2px);
-        }
-
-        /* 5b. Botão "Limpar Conversa" fixo, acima do chat_input, alinhado à esquerda */
-        .st-key-clear_chat_fixed {
-            position: fixed !important;
-            left: 20px !important;
-            bottom: 92px !important;
-            z-index: 999 !important;
-            width: auto !important;
-        }
-        .st-key-clear_chat_fixed button {
-            background: #163664 !important;
-            color: #e2edff !important;
-            border: 1px solid var(--ch-blue-border) !important;
-            border-radius: 10px !important;
-            font-size: 12.5px !important;
-            padding: 6px 12px !important;
-            box-shadow: 0 4px 16px rgba(10, 25, 48, 0.5) !important;
-            transition: all 0.2s ease !important;
-        }
-        .st-key-clear_chat_fixed button:hover {
-            background: #1d4580 !important;
-            border-color: var(--ch-yellow-solid) !important;
-            color: var(--ch-yellow-solid) !important;
         }
 
         /* 6. Campo do Chat Input (Azul com foco Dourado) */
@@ -525,13 +491,17 @@ def main() -> None:
         with st.chat_message(msg["role"], avatar=avatar):
             st.markdown(msg["content"])
 
-    # 7. Botão "Limpar Conversa" fixo, acima do chat_input, alinhado à esquerda
-    with st.container(key="clear_chat_fixed"):
-        st.button(
-            "🗑️ Limpar Conversa",
-            key="btn_clear_chat",
-            on_click=_clear_chat_history,
-        )
+    # 7. Barra Inferior Acima do st.chat_input: Botão "Limpar Conversa"
+    _, clear_col = st.columns([3, 1])
+    with clear_col:
+        if st.button("🗑️ Limpar Conversa", key="btn_clear_chat", use_container_width=True):
+            st.session_state["public_chat_history"] = [
+                {
+                    "role": "assistant",
+                    "content": "Conversa reiniciada. Como posso ajudar você agora?",
+                }
+            ]
+            st.rerun()
 
     # 8. Captura e Processamento da Interação (st.chat_input)
     ai_service = AIService()
