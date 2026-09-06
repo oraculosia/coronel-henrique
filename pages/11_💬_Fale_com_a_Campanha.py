@@ -13,8 +13,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import streamlit as st
+from src.config.settings import settings
 from src.services.ai_service import AIService
+from src.services.notification import Notificador
 from src.services.supporter_service import SupporterService
+from src.services.telegram_service import TelegramService
 from src.utils.validators import validate_email_address, validate_whatsapp
 
 OFFICIAL_PARTNER_SLUG = "campanha-oficial"
@@ -378,6 +381,34 @@ def supporter_signup_dialog() -> None:
     if not result.success:
         st.error(result.message)
         return
+
+    partner_label = partner_result.data.get("campaign_message") or "esta campanha"
+    supporter = result.data or {}
+
+    telegram = TelegramService()
+    telegram.notify_new_supporter(
+        partner_id=partner_result.data["id"],
+        partner_label=partner_label,
+        supporter_id=supporter.get("id", ""),
+        first_name=first_name,
+        last_name=last_name,
+        phone=whatsapp_result,
+        email=email_result,
+    )
+    telegram.notify_goal_if_reached(
+        partner_id=partner_result.data["id"],
+        partner_label=partner_label,
+    )
+
+    try:
+        Notificador().enviar_boas_vindas_apoiador(
+            destino=email_result,
+            nome_apoiador=first_name,
+            nome_parceiro=partner_label,
+            link_cadastro_parceiro=f"{settings.APP_BASE_URL}/apoiar?p={OFFICIAL_PARTNER_SLUG}",
+        )
+    except Exception:
+        pass  # falha no envio do e-mail não deve impedir a confirmação do cadastro
 
     st.session_state["public_chat_history"].append(
         {
