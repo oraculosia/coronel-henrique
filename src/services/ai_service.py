@@ -5,7 +5,7 @@ from src.config.settings import settings
 from src.database.supabase_client import get_supabase
 from src.prompts.assistant import build_public_system_prompt, build_system_prompt
 
-DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
 
 
 @dataclass
