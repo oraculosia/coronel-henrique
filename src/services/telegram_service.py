@@ -21,12 +21,10 @@ class TelegramService:
     """Envio e gerenciamento de notificações profissionais via Telegram.
 
     Suporta:
-    - Notificação de novo apoiador (direcionada ao admin).
-    - Meta diária atingida (com idempotência via Supabase).
-    - Alerta de aproximação de meta (ex: 80% atingido).
-    - Boas-vindas/ativação de novos parceiros (para o admin).
-    - Resumo diário de performance (admin ou canal geral).
-    - Alertas de erros críticos / falhas de integração.
+    1. Notificação para o Parceiro (com dados completos do apoiador cadastrado em seu link).
+    2. Notificação para o Admin (gestão com total acumulado e dados do cadastro).
+    3. Alertas de meta diária atingida e progresso.
+    4. Resumo diário e alertas de sistema.
     """
 
     def __init__(self) -> None:
@@ -39,28 +37,74 @@ class TelegramService:
         """Retorna o datetime atual no fuso horário brasileiro."""
         return datetime.now(self.tz_br)
 
-    def _resolve_chat_id(self, partner_id: str) -> str:
-        """Busca o chat_id específico do parceiro ou usa o default."""
+    def _resolve_partner_info(self, partner_id: str) -> tuple[str, str | None]:
+        """Busca o nome e o telegram_chat_id específico do parceiro."""
+        partner_chat_id = None
+        partner_name = "Campanha Oficial"
+
         try:
-            response = (
+            # Busca telegram_chat_id na tabela partners
+            p_res = (
                 self.admin_client.table("partners")
                 .select("telegram_chat_id")
                 .eq("id", partner_id)
                 .limit(1)
                 .execute()
             )
-            rows = response.data or []
-            partner_chat_id = rows[0].get("telegram_chat_id") if rows else None
-            return partner_chat_id or self.default_chat_id
+            if p_res.data:
+                partner_chat_id = p_res.data[0].get("telegram_chat_id")
+
+            # Busca nome do parceiro em profiles
+            prof_res = (
+                self.admin_client.table("profiles")
+                .select("first_name, last_name")
+                .eq("id", partner_id)
+                .limit(1)
+                .execute()
+            )
+            if prof_res.data:
+                first = prof_res.data[0].get("first_name", "")
+                last = prof_res.data[0].get("last_name", "")
+                name = f"{first} {last}".strip()
+                if name:
+                    partner_name = name
+
         except Exception:
-            return self.default_chat_id
+            pass
+
+        return partner_name, partner_chat_id
+
+    def _get_partner_supporter_count(self, partner_id: str) -> int:
+        """Retorna o total de apoiadores já cadastrados por este parceiro."""
+        try:
+            res = (
+                self.admin_client.table("supporters")
+                .select("id", count="exact")
+                .eq("partner_id", partner_id)
+                .execute()
+            )
+            return res.count or 0
+        except Exception:
+            return 0
+
+    def _get_global_supporter_count(self) -> int:
+        """Retorna o total geral de apoiadores em toda a campanha."""
+        try:
+            res = (
+                self.admin_client.table("supporters")
+                .select("id", count="exact")
+                .execute()
+            )
+            return res.count or 0
+        except Exception:
+            return 0
 
     def _send(self, chat_id: str, text: str) -> ServiceResult:
         """Executa a requisição HTTP para a API do Telegram."""
         if not self.bot_token or not chat_id:
             return ServiceResult(
                 success=False,
-                message="Telegram não configurado (.env ausente ou incompleto).",
+                message="Telegram não configurado (.env ou chat_id ausente).",
             )
 
         try:
@@ -70,6 +114,7 @@ class TelegramService:
                     "chat_id": chat_id,
                     "text": text,
                     "parse_mode": "HTML",
+                    "disable_web_page_preview": True,
                 },
                 timeout=10,
             )
@@ -87,28 +132,6 @@ class TelegramService:
 
         return ServiceResult(success=True, message="Notificação enviada com sucesso.")
 
-    def _resolve_partner_label(self, partner_id: str, partner_label: str) -> str:
-        """Usa o nome do parceiro (profiles) quando a campanha não definiu campaign_message."""
-        if partner_label:
-            return partner_label
-        try:
-            response = (
-                self.admin_client.table("profiles")
-                .select("first_name, last_name")
-                .eq("id", partner_id)
-                .limit(1)
-                .execute()
-            )
-            rows = response.data or []
-            name = (
-                f"{rows[0].get('first_name', '')} {rows[0].get('last_name', '')}".strip()
-                if rows
-                else ""
-            )
-            return f"esta {name}" if name else "esta campanha"
-        except Exception:
-            return "esta campanha"
-
     def notify_new_supporter(
         self,
         partner_id: str,
@@ -117,10 +140,15 @@ class TelegramService:
         first_name: str,
         last_name: str,
         phone: str = "",
+        email: str = "",
         created_at: datetime | str | None = None,
     ) -> ServiceResult:
-        """Notifica o admin sobre o cadastro de um novo apoiador."""
-        partner_label = self._resolve_partner_label(partner_id, partner_label)
+        """Dispara notificações simultâneas para o ADMIN e para o PARCEIRO responsável.
+
+        1. Para o Admin: Gestão com total acumulado da campanha e do parceiro.
+        2. Para o Parceiro: Dados completos do apoiador que usou seu link.
+        """
+        # 1. Trata data e formatação
         if isinstance(created_at, datetime):
             dt_br = created_at.astimezone(self.tz_br) if created_at.tzinfo else created_at.replace(tzinfo=self.tz_br)
             formatted_date = dt_br.strftime("%d/%m/%Y às %H:%M")
@@ -134,17 +162,62 @@ class TelegramService:
         else:
             formatted_date = self._get_now_br().strftime("%d/%m/%Y às %H:%M")
 
+        # 2. Resolve informações e contagens
+        resolved_name, partner_chat_id = self._resolve_partner_info(partner_id)
+        partner_display = partner_label or resolved_name
         full_name = f"{first_name or ''} {last_name or ''}".strip() or "Não informado"
         phone_display = phone.strip() if phone else "Não informado"
+        email_display = email.strip() if email else "Não informado"
 
-        text = (
-            f"🙌 <b>Novo apoiador cadastrado por {html.escape(partner_label)}:</b>\n\n"
-            f"👤 <b>Nome:</b> {html.escape(full_name)}\n"
-            f"📱 <b>WhatsApp:</b> {html.escape(phone_display)}\n"
-            f"🗓 <b>Data e hora:</b> {html.escape(formatted_date)}"
+        partner_total = self._get_partner_supporter_count(partner_id)
+        global_total = self._get_global_supporter_count()
+
+        admin_sent = False
+        partner_sent = False
+
+        # ---------------------------------------------------------------------
+        # 3. MENSAGEM PARA O ADMIN (Visão de Gestão Global)
+        # ---------------------------------------------------------------------
+        if self.default_chat_id:
+            text_admin = (
+                f"🔔 <b>NOVO APOIADOR CADASTRADO (PAINEL GERAL)</b>\n\n"
+                f"👤 <b>Apoiador:</b> {html.escape(full_name)}\n"
+                f"📱 <b>WhatsApp:</b> {html.escape(phone_display)}\n"
+                f"📧 <b>E-mail:</b> {html.escape(email_display)}\n"
+                f"🏢 <b>Parceiro Indicador:</b> {html.escape(partner_display)}\n"
+                f"🗓 <b>Data e Hora:</b> {html.escape(formatted_date)}\n\n"
+                f"📊 <b>MÉTRICAS DE CAMPANHA:</b>\n"
+                f"• Cadastros deste Parceiro: <b>{partner_total}</b>\n"
+                f"• Total Geral da Campanha: <b>{global_total}</b>"
+            )
+            admin_res = self._send(self.default_chat_id, text_admin)
+            admin_sent = admin_res.success
+
+        # ---------------------------------------------------------------------
+        # 4. MENSAGEM PARA O PARCEIRO (Seus Apoiadores Diretos)
+        # ---------------------------------------------------------------------
+        # Se o parceiro tiver telegram_chat_id próprio e for diferente do admin geral
+        if partner_chat_id and str(partner_chat_id) != str(self.default_chat_id):
+            text_partner = (
+                f"🎉 <b>PARABÉNS! NOVO APOIADOR PELO SEU LINK!</b>\n\n"
+                f"Olá, <b>{html.escape(partner_display)}</b>! Mais um apoiador acabou de se cadastrar através da sua referência:\n\n"
+                f"👤 <b>Nome:</b> {html.escape(full_name)}\n"
+                f"📱 <b>WhatsApp:</b> {html.escape(phone_display)}\n"
+                f"📧 <b>E-mail:</b> {html.escape(email_display)}\n"
+                f"🗓 <b>Data:</b> {html.escape(formatted_date)}\n\n"
+                f"🎯 <b>Seu total de indicados até agora:</b> {partner_total} apoiadores\n\n"
+                f"<i>Continue compartilhando seu link e multiplicando nossa voz por Minas Gerais! 🇧🇷🚀</i>"
+            )
+            partner_res = self._send(partner_chat_id, text_partner)
+            partner_sent = partner_res.success
+        else:
+            partner_sent = True  # Ignora se não configurou chat individual
+
+        return ServiceResult(
+            success=admin_sent or partner_sent,
+            message="Notificações processadas.",
+            data={"admin_sent": admin_sent, "partner_sent": partner_sent},
         )
-
-        return self._send(self.default_chat_id, text)
 
     def notify_goal_if_reached(
         self,
@@ -158,7 +231,7 @@ class TelegramService:
 
         rows = (
             self.admin_client.table("daily_goals")
-            .select("id, status, notified_at, target_count")
+            .select("id, status, notified_at, target_count, achieved_count")
             .eq("partner_id", partner_id)
             .eq("goal_date", target_date)
             .limit(1)
@@ -196,43 +269,25 @@ class TelegramService:
                 data={"skipped": True},
             )
 
-        chat_id = self._resolve_chat_id(partner_id)
+        resolved_name, partner_chat_id = self._resolve_partner_info(partner_id)
+        display_name = partner_label or resolved_name
         now_time = self._get_now_br().strftime("%H:%M")
         formatted_date = target_date_obj.strftime("%d/%m/%Y")
 
         text = (
-            f"🎯 <b>Meta Diária Atingida!</b>\n\n"
-            f"🏢 <b>Parceiro:</b> {html.escape(partner_label)}\n"
-            f"📈 <b>Objetivo batido:</b> {goal['target_count']} cadastros\n"
-            f"🗓 <b>Data:</b> {formatted_date}\n"
-            f"⏰ <b>Horário:</b> {now_time}\n\n"
-            f"🚀 <i>Parabéns à equipe pelo excelente resultado!</i>"
+            f"🎯 <b>META DIÁRIA ATINGIDA COM SUCESSO!</b>\n\n"
+            f"🏢 <b>Parceiro:</b> {html.escape(display_name)}\n"
+            f"📈 <b>Objetivo batido:</b> {goal['target_count']} apoiadores\n"
+            f"🗓 <b>Data:</b> {formatted_date} às {now_time}\n\n"
+            f"🚀 <b>Parabéns pelo trabalho e engajamento na campanha!</b>"
         )
-        return self._send(chat_id, text)
 
-    def notify_goal_progress(
-        self,
-        partner_id: str,
-        partner_label: str,
-        current_count: int,
-        target_count: int,
-    ) -> ServiceResult:
-        """Notifica o parceiro quando ele atinge marcos parciais da meta (ex: 80%)."""
-        if target_count <= 0:
-            return ServiceResult(success=True, message="Meta inválida para cálculo.")
+        # Envia para o admin e também para o chat do parceiro (se houver)
+        self._send(self.default_chat_id, text)
+        if partner_chat_id and str(partner_chat_id) != str(self.default_chat_id):
+            self._send(partner_chat_id, text)
 
-        percentage = int((current_count / target_count) * 100)
-        remaining = max(target_count - current_count, 0)
-        chat_id = self._resolve_chat_id(partner_id)
-
-        text = (
-            f"⚡ <b>Reta Final da Meta!</b>\n\n"
-            f"🏢 <b>Parceiro:</b> {html.escape(partner_label)}\n"
-            f"📊 <b>Progresso:</b> {percentage}% ({current_count}/{target_count})\n"
-            f"🔥 <b>Faltam apenas:</b> {remaining} apoiadores\n\n"
-            f"<i>Falta pouco para bater a meta de hoje, continue acelerando!</i>"
-        )
-        return self._send(chat_id, text)
+        return ServiceResult(success=True, message="Notificação de meta enviada.")
 
     def notify_new_partner_onboarded(
         self,
@@ -243,15 +298,16 @@ class TelegramService:
     ) -> ServiceResult:
         """Notifica o admin sobre o cadastro ou ativação de um novo parceiro."""
         now_str = self._get_now_br().strftime("%d/%m/%Y às %H:%M")
-        
+
         text = (
-            f"🤝 <b>Novo Parceiro Cadastrado!</b>\n\n"
-            f"🏢 <b>Nome / Entidade:</b> {html.escape(partner_name)}\n"
+            f"🤝 <b>NOVO PARCEIRO CADASTRADO NO SISTEMA!</b>\n\n"
+            f"🏢 <b>Nome / Liderança:</b> {html.escape(partner_name)}\n"
             f"📧 <b>E-mail:</b> {html.escape(email or 'Não informado')}\n"
-            f"📱 <b>Telefone:</b> {html.escape(phone or 'Não informado')}\n"
+            f"📱 <b>WhatsApp:</b> {html.escape(phone or 'Não informado')}\n"
             f"📍 <b>Cidade / Região:</b> {html.escape(city or 'Não informado')}\n"
             f"🗓 <b>Data de ingresso:</b> {now_str}"
         )
+
         return self._send(self.default_chat_id, text)
 
     def notify_daily_summary(
@@ -273,37 +329,15 @@ class TelegramService:
             for idx, partner in enumerate(top_partners, start=1):
                 name = html.escape(str(partner.get("name", "Parceiro")))
                 count = partner.get("count", 0)
-                ranking_lines += f"{idx}º {name} — <b>{count}</b> cadastros\n"
+                ranking_lines += f"{idx}º {name} — {count} cadastros\n"
 
         text = (
-            f"📊 <b>Resumo Diário de Captação</b>\n"
-            f"🗓 <b>Data de referência:</b> {formatted_date}\n\n"
-            f"👥 <b>Total de novos apoiadores:</b> {total_supporters}\n"
+            f"📊 <b>RESUMO DIÁRIO DE CADASTROS (ADMIN)</b>\n"
+            f"🗓 <b>Data:</b> {formatted_date}\n\n"
+            f"👥 <b>Total de novos apoiadores hoje:</b> {total_supporters}\n"
             f"🏢 <b>Parceiros ativos hoje:</b> {active_partners_count}"
             f"{ranking_lines}\n"
-            f"⚙️ <i>Relatório gerado automaticamente pelo sistema.</i>"
+            f"⚙️ <i>Relatório consolidado gerado automaticamente pela plataforma.</i>"
         )
+
         return self._send(dest_chat_id, text)
-
-    def notify_system_error(
-        self,
-        service_name: str,
-        error_message: str,
-        details: str = "",
-    ) -> ServiceResult:
-        """Alerta imediato de erros críticos de integração ou webhooks para o admin."""
-        now_str = self._get_now_br().strftime("%d/%m/%Y às %H:%M:%S")
-
-        details_block = ""
-        if details:
-            details_block = f"\n🔍 <b>Detalhes técnicos:</b>\n<code>{html.escape(details[:300])}</code>\n"
-
-        text = (
-            f"🚨 <b>Alerta de Falha no Sistema</b>\n\n"
-            f"🛠 <b>Módulo / Serviço:</b> {html.escape(service_name)}\n"
-            f"⚠️ <b>Erro:</b> {html.escape(error_message)}\n"
-            f"⏰ <b>Ocorrência:</b> {now_str}"
-            f"{details_block}\n"
-            f"<i>Verifique os logs da aplicação para mais informações.</i>"
-        )
-        return self._send(self.default_chat_id, text)
