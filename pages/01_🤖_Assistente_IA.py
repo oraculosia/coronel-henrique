@@ -6,6 +6,12 @@ from src.auth.session import get_profile
 from src.services.ai_service import AIService
 from src.utils.formatting import resolve_avatar_path
 
+
+def _clear_chat_history() -> None:
+    """Callback do botão Limpar Conversa: reseta o histórico do chat interno."""
+    st.session_state["ai_chat_history"] = []
+
+
 st.set_page_config(
     page_title="Assistente IA | Coronel Henrique 22500",
     page_icon="🤖",
@@ -104,6 +110,26 @@ st.markdown(
     [data-testid="stChatInput"] textarea {
         color: #ffffff !important;
     }
+
+    /* Botão "Limpar Conversa" fixo, acima do chat_input, alinhado à esquerda */
+    .st-key-clear_chat_fixed {
+        position: fixed !important;
+        left: 20px !important;
+        bottom: 92px !important;
+        z-index: 999 !important;
+        width: auto !important;
+    }
+    .st-key-clear_chat_fixed button {
+        background-color: var(--ch-bg-surface) !important;
+        color: #f1f5f9 !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 10px !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+    }
+    .st-key-clear_chat_fixed button:hover {
+        border-color: var(--ch-yellow-gold) !important;
+        color: var(--ch-yellow-gold) !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -130,28 +156,20 @@ role_display = role_labels.get(role, role.capitalize())
 # -----------------------------------------------------------------------------
 # Header Superior
 # -----------------------------------------------------------------------------
-col_title, col_action = st.columns([3.5, 1.2])
-
-with col_title:
-    st.markdown(
-        f"""
-        <div style="margin-bottom: 20px;">
-            <div class="ch-ai-badge">INTELIGÊNCIA ARTIFICIAL · BASE 22500</div>
-            <h2 style="margin: 10px 0 6px 0; font-size: 28px; font-weight: 800; color: #ffffff !important;">
-                Assistente de Gestão e Projetos
-            </h2>
-            <div style="color: #cbd5e1; font-size: 15px;">
-                Conectado como <strong>{html.escape(profile.get('first_name', ''))}</strong> ({role_display}).
-            </div>
+st.markdown(
+    f"""
+    <div style="margin-bottom: 20px;">
+        <div class="ch-ai-badge">INTELIGÊNCIA ARTIFICIAL · BASE 22500</div>
+        <h2 style="margin: 10px 0 6px 0; font-size: 28px; font-weight: 800; color: #ffffff !important;">
+            Assistente de Gestão e Projetos
+        </h2>
+        <div style="color: #cbd5e1; font-size: 15px;">
+            Conectado como <strong>{html.escape(profile.get('first_name', ''))}</strong> ({role_display}).
         </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-with col_action:
-    if st.button("🗑️ Limpar histórico", help="Limpa o histórico de conversas em tela.", use_container_width=True):
-        st.session_state["ai_chat_history"] = []
-        st.rerun()
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 # -----------------------------------------------------------------------------
 # Inicialização e Histórico
@@ -217,6 +235,17 @@ for message in st.session_state["ai_chat_history"]:
     avatar = user_avatar if message["role"] == "user" else "assets/images/logo_coronel_henrique.png"
     with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
+
+# -----------------------------------------------------------------------------
+# Botão "Limpar Conversa" fixo, acima do chat_input, alinhado à esquerda
+# -----------------------------------------------------------------------------
+with st.container(key="clear_chat_fixed"):
+    st.button(
+        "🗑️ Limpar Conversa",
+        key="btn_clear_chat",
+        help="Limpa o histórico de conversas em tela.",
+        on_click=_clear_chat_history,
+    )
 
 # -----------------------------------------------------------------------------
 # Campo de Entrada e Processamento com IA
