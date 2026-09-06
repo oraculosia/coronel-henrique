@@ -6,12 +6,6 @@ from src.auth.session import get_profile
 from src.services.ai_service import AIService
 from src.utils.formatting import resolve_avatar_path
 
-
-def _clear_chat_history() -> None:
-    """Callback do botão Limpar Conversa: reseta o histórico do chat interno."""
-    st.session_state["ai_chat_history"] = []
-
-
 st.set_page_config(
     page_title="Assistente IA | Coronel Henrique 22500",
     page_icon="🤖",
@@ -37,6 +31,7 @@ st.markdown(
         --ch-text-pure-white: #ffffff;
         --ch-text-light: #f1f5f9;
         --ch-text-secondary: #cbd5e1;
+        --ch-blue-border: #2c5999;
     }
 
     html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stToolbar"], .main, section[data-testid="stSidebar"] {
@@ -66,6 +61,21 @@ st.markdown(
         background-color: rgba(0, 168, 89, 0.25);
         border: 1px solid var(--ch-green-primary);
         color: #22c55e !important;
+        padding: 6px 16px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .ch-ai-badge-super {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background-color: rgba(255, 199, 44, 0.25);
+        border: 1px solid var(--ch-yellow-gold);
+        color: var(--ch-yellow-gold) !important;
         padding: 6px 16px;
         border-radius: 999px;
         font-size: 12px;
@@ -111,24 +121,21 @@ st.markdown(
         color: #ffffff !important;
     }
 
-    /* Botão "Limpar Conversa" fixo, acima do chat_input, alinhado à esquerda */
-    .st-key-clear_chat_fixed {
-        position: fixed !important;
-        left: 20px !important;
-        bottom: 92px !important;
-        z-index: 999 !important;
-        width: auto !important;
-    }
-    .st-key-clear_chat_fixed button {
-        background-color: var(--ch-bg-surface) !important;
-        color: #f1f5f9 !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    /* Botão Limpar Conversa */
+    div.stButton button[kind="secondary"] {
+        background: #163664 !important;
+        color: #e2edff !important;
+        border: 1px solid var(--ch-blue-border) !important;
         border-radius: 10px !important;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+        font-size: 12.5px !important;
+        padding: 6px 12px !important;
+        transition: all 0.2s ease !important;
     }
-    .st-key-clear_chat_fixed button:hover {
-        border-color: var(--ch-yellow-gold) !important;
-        color: var(--ch-yellow-gold) !important;
+    div.stButton button[kind="secondary"]:hover {
+        background: #1d4580 !important;
+        border-color: #ef4444 !important;
+        color: #ffffff !important;
+        transform: translateY(-2px);
     }
     </style>
     """,
@@ -146,20 +153,23 @@ user_avatar = resolve_avatar_path(profile)
 
 # Títulos de gestão por papel
 role_labels = {
-    "super_admin": "Super Administrador (Gestão Global)",
+    "super_admin": "Super Administrador (Acesso Total ao Sistema)",
     "admin": "Administrador (Gestão de Parceiros e Campanha)",
     "parceiro": "Parceiro Oficial (Gestão do seu Negócio)",
     "apoiador": "Apoiador Oficial",
 }
 role_display = role_labels.get(role, role.capitalize())
 
+badge_class = "ch-ai-badge-super" if role == "super_admin" else "ch-ai-badge"
+badge_text = "ACESSO TOTAL · SUPER ADMIN" if role == "super_admin" else "INTELIGÊNCIA ARTIFICIAL · BASE 22500"
+
 # -----------------------------------------------------------------------------
-# Header Superior
+# Header Superior (Limpo, sem botão duplicado no topo)
 # -----------------------------------------------------------------------------
 st.markdown(
     f"""
     <div style="margin-bottom: 20px;">
-        <div class="ch-ai-badge">INTELIGÊNCIA ARTIFICIAL · BASE 22500</div>
+        <div class="{badge_class}">{badge_text}</div>
         <h2 style="margin: 10px 0 6px 0; font-size: 28px; font-weight: 800; color: #ffffff !important;">
             Assistente de Gestão e Projetos
         </h2>
@@ -176,34 +186,49 @@ st.markdown(
 # -----------------------------------------------------------------------------
 ai_service = AIService(access_token=access_token)
 
+# Flag para controlar se o usuário limpou a conversa deliberadamente
+if "history_cleared" not in st.session_state:
+    st.session_state["history_cleared"] = False
+
+# Carrega do banco apenas se não estiver na sessão e se o usuário não tiver pedido para limpar
 if "ai_chat_history" not in st.session_state:
-    history_result = ai_service.list_own_history(user_id=profile.get("id"), limit=10)
-    past = list(reversed(history_result.data or []))
-    st.session_state["ai_chat_history"] = [
-        message
-        for entry in past
-        for message in (
-            {"role": "user", "content": entry.get("question", "")},
-            {
-                "role": "assistant",
-                "content": entry.get("answer", ""),
-                "sources": entry.get("sources") or [],
-            },
-        )
-    ]
+    if not st.session_state["history_cleared"]:
+        history_result = ai_service.list_own_history(user_id=profile.get("id"), limit=10)
+        past = list(reversed(history_result.data or []))
+        st.session_state["ai_chat_history"] = [
+            message
+            for entry in past
+            for message in (
+                {"role": "user", "content": entry.get("question", "")},
+                {
+                    "role": "assistant",
+                    "content": entry.get("answer", ""),
+                    "sources": entry.get("sources") or [],
+                },
+            )
+        ]
+    else:
+        st.session_state["ai_chat_history"] = []
 
 # -----------------------------------------------------------------------------
-# Sugestões e Card Informativo Personalizado por Papel
+# Sugestões e Card Informativo Personalizado por Papel (Empty State)
 # -----------------------------------------------------------------------------
 if not st.session_state["ai_chat_history"]:
-    if role == "parceiro":
+    if role == "super_admin":
+        subtext = (
+            "Visão executiva global da campanha liberada:<br>"
+            "• <em>'Qual é o balanço geral de apoiadores e parceiros cadastrados hoje?'</em><br>"
+            "• <em>'Quais parceiros bateram a meta diária e quais estão com desempenho abaixo do esperado?'</em><br>"
+            "• <em>'Mostre os últimos logs de auditoria e ações realizadas no sistema.'</em>"
+        )
+    elif role == "parceiro":
         subtext = (
             "Exemplos de perguntas para o seu negócio:<br>"
             "• <em>'Quantos apoiadores já se cadastraram pelo meu link?'</em><br>"
             "• <em>'Qual é a minha meta de hoje e como está meu progresso?'</em><br>"
             "• <em>'Como apresentar as Escolas Cívico-Militares para convencer novos apoiadores?'</em>"
         )
-    elif role in ("admin", "super_admin"):
+    elif role == "admin":
         subtext = (
             "Exemplos de perguntas para a gestão da campanha:<br>"
             "• <em>'Qual é o total geral de apoiadores cadastrados na campanha?'</em><br>"
@@ -237,15 +262,14 @@ for message in st.session_state["ai_chat_history"]:
         st.markdown(message["content"])
 
 # -----------------------------------------------------------------------------
-# Botão "Limpar Conversa" fixo, acima do chat_input, alinhado à esquerda
+# Barra de Ação Imediatamente Acima do st.chat_input: Botão "Limpar Conversa"
 # -----------------------------------------------------------------------------
-with st.container(key="clear_chat_fixed"):
-    st.button(
-        "🗑️ Limpar Conversa",
-        key="btn_clear_chat",
-        help="Limpa o histórico de conversas em tela.",
-        on_click=_clear_chat_history,
-    )
+_, clear_col = st.columns([3.5, 1.2])
+with clear_col:
+    if st.button("🗑️ Limpar Conversa", key="btn_clear_internal_chat", use_container_width=True):
+        st.session_state["ai_chat_history"] = []
+        st.session_state["history_cleared"] = True
+        st.rerun()
 
 # -----------------------------------------------------------------------------
 # Campo de Entrada e Processamento com IA
@@ -253,6 +277,9 @@ with st.container(key="clear_chat_fixed"):
 question = st.chat_input("Pergunte algo sobre seus dados ou sobre os projetos do Coronel Henrique...")
 
 if question:
+    # Se o usuário voltar a perguntar após ter limpado, a flag é resetada
+    st.session_state["history_cleared"] = False
+
     st.session_state["ai_chat_history"].append({"role": "user", "content": question})
     with st.chat_message("user", avatar=user_avatar):
         st.markdown(question)
