@@ -207,6 +207,7 @@ if submitted:
                 first_name=first_name,
                 last_name=last_name,
                 phone=whatsapp_result,
+                email=email_result,
             )
             telegram.notify_goal_if_reached(
                 partner_id=partner["id"],

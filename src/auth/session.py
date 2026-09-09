@@ -1,3 +1,7 @@
+import base64
+import binascii
+import json
+import time
 from typing import Any
 
 import streamlit as st
@@ -63,3 +67,34 @@ def get_profile() -> dict[str, Any] | None:
 
 def is_authenticated() -> bool:
     return bool(st.session_state.get("authenticated", False))
+
+
+def update_tokens(access_token: str, refresh_token: str) -> None:
+    """Atualiza só os tokens da sessão (usado após renovar via refresh_token),
+    sem mexer no restante do perfil já carregado."""
+    st.session_state["access_token"] = access_token
+    st.session_state["refresh_token"] = refresh_token
+
+
+def is_access_token_expired(access_token: str | None, leeway_seconds: int = 30) -> bool:
+    """Lê o campo `exp` do JWT (sem validar assinatura, só pra saber se já
+    venceu) — os tokens do Supabase Auth expiram por padrão em 1h e a
+    aplicação não os renovava automaticamente, quebrando toda query
+    protegida por RLS depois desse tempo com mensagens genéricas de erro.
+
+    Só retorna True quando o `exp` for lido com sucesso e já tiver vencido —
+    tokens que não são JWT válidos (ex.: valores fake usados em teste) são
+    tratados como não expirados, pra não disparar refresh de rede à toa."""
+    if not access_token:
+        return True
+
+    try:
+        payload_segment = access_token.split(".")[1]
+        padding = "=" * (-len(payload_segment) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(payload_segment + padding))
+        exp = payload.get("exp")
+        if exp is None:
+            return False
+        return time.time() >= (exp - leeway_seconds)
+    except (IndexError, ValueError, binascii.Error, json.JSONDecodeError):
+        return False

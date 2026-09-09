@@ -4,6 +4,7 @@ from datetime import date, timedelta
 import pandas as pd
 import streamlit as st
 
+from src.auth.guards import ensure_fresh_access_token
 from src.auth.session import get_profile, is_authenticated
 from src.services.goal_service import GoalService
 from src.services.partner_service import PartnerService
@@ -503,6 +504,7 @@ if not is_authenticated():
             st.switch_page("pages/05_🔐_Login.py")
 
 else:
+    ensure_fresh_access_token()
     profile = get_profile() or {}
     first_name = profile.get("first_name", "Usuário")
     role = profile.get("role", "usuario")
