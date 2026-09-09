@@ -16,7 +16,9 @@ chat_id sozinho.
 Usa long-polling (getUpdates) em vez de webhook — não exige endpoint
 HTTP público, o que o Streamlit Cloud não oferece nativamente.
 """
+import html
 import logging
+import re
 import threading
 import time
 
@@ -29,10 +31,27 @@ logger = logging.getLogger(__name__)
 _MAX_TELEGRAM_MESSAGE_CHARS = 4000
 _ERROR_RETRY_SECONDS = 5
 _WELCOME_TEXT = (
-    "Olá! Sou o assistente virtual oficial da Campanha do Coronel Henrique "
-    "(22500). Pode perguntar sobre os projetos, propostas ou como apoiar a "
-    "campanha!"
+    "👋 <b>Bem-vindo(a) à Campanha do Coronel Henrique (22500)!</b>\n\n"
+    "Sou o assistente virtual oficial. Pode perguntar sobre os projetos, "
+    "propostas ou como apoiar a campanha!"
 )
+
+# O Assistente IA usa markdown (**negrito**) pra titulos/subtitulos — funciona
+# direto no chat web (pages/11, renderizado via st.markdown), mas o Telegram
+# usa parse_mode HTML e mostraria os asteriscos literalmente. Por isso
+# escapamos primeiro (protege contra <, > e & quebrando o HTML) e só depois
+# convertemos **negrito**/*italico* pras tags reais.
+_BOLD_MARKDOWN_RE = re.compile(r"\*\*(.+?)\*\*")
+_ITALIC_MARKDOWN_RE = re.compile(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)")
+
+
+def format_for_telegram(text: str) -> str:
+    """Converte a resposta em markdown do Assistente IA pra HTML do Telegram
+    (negrito em titulos/subtitulos, itálico e ícones/emojis preservados)."""
+    escaped = html.escape(text)
+    escaped = _BOLD_MARKDOWN_RE.sub(r"<b>\1</b>", escaped)
+    escaped = _ITALIC_MARKDOWN_RE.sub(r"<i>\1</i>", escaped)
+    return escaped
 
 
 def _answer_and_reply(telegram: TelegramService, ai_service: AIService, chat_id: str, text: str) -> None:
@@ -48,7 +67,8 @@ def _answer_and_reply(telegram: TelegramService, ai_service: AIService, chat_id:
     if not answer:
         answer = "Desculpe, não consegui gerar uma resposta agora."
 
-    telegram.send_message(chat_id, answer[:_MAX_TELEGRAM_MESSAGE_CHARS])
+    formatted = format_for_telegram(answer)[:_MAX_TELEGRAM_MESSAGE_CHARS]
+    telegram.send_message(chat_id, formatted)
 
 
 def _process_update(telegram: TelegramService, ai_service: AIService, update: dict) -> None:
