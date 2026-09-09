@@ -22,6 +22,26 @@ st.set_page_config(
 initialize_session()
 
 
+@st.cache_resource
+def _init_telegram_bot_polling() -> bool:
+    """Inicia (uma única vez por processo) a thread que faz o bot do
+    Telegram responder mensagens via IA — no-op se TELEGRAM_BOT_POLLING_ENABLED
+    não estiver ligado no .env (ver src/services/telegram_bot_listener.py).
+    Import fica dentro do `if` de propósito: evita o custo de import extra
+    (ai_service/telegram_service) quando a feature está desligada, que é o
+    padrão em dev/teste."""
+    if not settings.TELEGRAM_BOT_POLLING_ENABLED:
+        return True
+
+    from src.services.telegram_bot_listener import start_background_polling
+
+    start_background_polling()
+    return True
+
+
+_init_telegram_bot_polling()
+
+
 def load_css() -> None:
     css_path = Path("assets/styles/premium.css")
 

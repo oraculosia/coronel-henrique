@@ -35,6 +35,12 @@ class Settings:
     TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
     TELEGRAM_WEBHOOK_URL = os.getenv("TELEGRAM_WEBHOOK_URL", "")
+    # Liga o assistente de IA respondendo mensagens recebidas no bot do Telegram
+    # (long-polling, ver src/services/telegram_bot_listener.py). Desligado por
+    # padrão de propósito — só habilitar quando o bot/credenciais estiverem OK.
+    TELEGRAM_BOT_POLLING_ENABLED = (
+        os.getenv("TELEGRAM_BOT_POLLING_ENABLED", "false").strip().lower() == "true"
+    )
 
     PROFILE_IMAGE_DIR = ROOT_DIR / os.getenv(
         "PROFILE_IMAGE_DIR",

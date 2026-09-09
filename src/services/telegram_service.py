@@ -132,6 +132,67 @@ class TelegramService:
 
         return ServiceResult(success=True, message="Notificação enviada com sucesso.")
 
+    def send_message(self, chat_id: str, text: str) -> ServiceResult:
+        """Wrapper público de `_send` para uso por outros módulos (ex.: bot listener)."""
+        return self._send(chat_id, text)
+
+    def delete_webhook(self) -> ServiceResult:
+        """Remove qualquer webhook registrado — necessário antes de usar
+        getUpdates (long-polling), pois a API do Telegram bloqueia as duas
+        formas de receber updates ao mesmo tempo."""
+        if not self.bot_token:
+            return ServiceResult(success=False, message="Telegram não configurado (.env).")
+
+        try:
+            response = requests.post(
+                f"https://api.telegram.org/bot{self.bot_token}/deleteWebhook",
+                timeout=10,
+            )
+        except Exception as exc:
+            return ServiceResult(
+                success=False, message=f"Falha de rede ao remover webhook: {exc}"
+            )
+
+        if response.status_code != 200:
+            return ServiceResult(
+                success=False,
+                message=f"Telegram respondeu com status {response.status_code}: {response.text}",
+            )
+
+        return ServiceResult(success=True, message="Webhook removido.")
+
+    def get_updates(self, offset: int | None = None, timeout: int = 25) -> ServiceResult:
+        """Long-polling: busca mensagens recebidas pelo bot desde `offset`.
+
+        `timeout` mantém a conexão HTTP aberta esperando novas mensagens
+        (long-polling do Telegram) — mais simples e sem exigir endpoint
+        público, ao contrário de um webhook."""
+        if not self.bot_token:
+            return ServiceResult(success=False, message="Telegram não configurado (.env).")
+
+        params: dict[str, Any] = {"timeout": timeout, "allowed_updates": ["message"]}
+        if offset is not None:
+            params["offset"] = offset
+
+        try:
+            response = requests.get(
+                f"https://api.telegram.org/bot{self.bot_token}/getUpdates",
+                params=params,
+                timeout=timeout + 10,
+            )
+        except Exception as exc:
+            return ServiceResult(
+                success=False, message=f"Falha de rede ao consultar Telegram: {exc}"
+            )
+
+        if response.status_code != 200:
+            return ServiceResult(
+                success=False,
+                message=f"Telegram respondeu com status {response.status_code}: {response.text}",
+            )
+
+        return ServiceResult(success=True, message="ok", data=response.json().get("result", []))
+
     def notify_new_supporter(
         self,
         partner_id: str,
