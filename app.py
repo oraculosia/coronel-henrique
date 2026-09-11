@@ -126,6 +126,42 @@ users_page = st.Page(
     icon="🛠️",
     url_path="usuarios",
 )
+# Landing pages públicas das campanhas (link direto de divulgação, sem menu
+# nem sidebar — mesmo padrão de public_ai_page).
+campaign_coronel_henrique_page = st.Page(
+    "pages/13_🎬_Campanha_Coronel_Henrique.py",
+    title="Campanha Coronel Henrique",
+    icon="🎬",
+    url_path="campanha-coronel-henrique",
+    visibility="hidden",
+)
+campaign_davi_heron_page = st.Page(
+    "pages/14_🎬_Campanha_Davi_Heron.py",
+    title="Campanha Davi Heron",
+    icon="🎬",
+    url_path="campanha-davi-heron",
+    visibility="hidden",
+)
+campaign_eduarda_christina_page = st.Page(
+    "pages/15_🎬_Campanha_Eduarda_Christina.py",
+    title="Campanha Eduarda Christina",
+    icon="🎬",
+    url_path="campanha-eduarda-christina",
+    visibility="hidden",
+)
+campaign_thalita_martins_page = st.Page(
+    "pages/16_🎬_Campanha_Thalita_Martins.py",
+    title="Campanha Thalita Martins",
+    icon="🎬",
+    url_path="campanha-thalita-martins",
+    visibility="hidden",
+)
+CAMPAIGN_PAGES = [
+    campaign_coronel_henrique_page,
+    campaign_davi_heron_page,
+    campaign_eduarda_christina_page,
+    campaign_thalita_martins_page,
+]
 
 
 def build_navigation() -> dict[str, list[st.Page]]:
@@ -133,7 +169,12 @@ def build_navigation() -> dict[str, list[st.Page]]:
     # visibility="hidden" já basta para não aparecerem no menu nativo; como
     # a navegação visível agora é 100% custom (st.page_link), essas páginas só
     # precisam continuar registradas aqui para permanecerem roteáveis.
-    hidden_pages = [verify_email_page, public_signup_page, public_ai_page]
+    hidden_pages = [
+        verify_email_page,
+        public_signup_page,
+        public_ai_page,
+        *CAMPAIGN_PAGES,
+    ]
 
     if not is_authenticated():
         return {
@@ -259,8 +300,8 @@ def main() -> None:
     navigation_map = build_navigation()
     pg = st.navigation(navigation_map, position="hidden")
 
-    # Assistente IA público: página institucional sem menu/sidebar, só o chat.
-    if pg is not public_ai_page:
+    # Assistente IA público e landing pages de campanha: sem menu/sidebar.
+    if pg is not public_ai_page and pg not in CAMPAIGN_PAGES:
         with st.sidebar:
             with st.container(key="sidebar_logo"):
                 st.image("assets/images/logo_coronel_henrique.png", width=132)
