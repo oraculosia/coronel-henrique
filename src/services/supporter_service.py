@@ -98,21 +98,42 @@ class SupporterService:
 
         except Exception as error:
             message = str(error).lower()
+
             if (
-                "duplicate key" in message
-                or "supporters_unique_name_whatsapp_per_partner" in message
+                "supporters_unique_whatsapp_global" in message
+                or "duplicate key" in message
+                or "23505" in message
             ):
                 return ServiceResult(
                     success=False,
                     message=(
-                        "Este apoiador (mesmo nome, sobrenome e WhatsApp) já "
-                        "está cadastrado para este parceiro."
+                        "Este WhatsApp já está cadastrado por um apoiador."
+                        
                     ),
                 )
+
+            if (
+                "informe um whatsapp válido com exatamente 9 dígitos" in message
+                or "supporters_whatsapp_format" in message
+            ):
+                return ServiceResult(
+                    success=False,
+                    message=(
+                        "Digite os números direto, "
+                        "sem DDD."
+                    ),
+                )
+
+            if "informe um e-mail válido" in message:
+                return ServiceResult(
+                    success=False,
+                    message="Informe um e-mail válido para continuar seu cadastro.",
+                )
+
             return ServiceResult(
                 success=False,
                 message=(
-                    "Não foi possível concluir o cadastro. Verifique o link "
+                    "Não foi possível concluir o cadastro. Verifique os dados "
                     "e tente novamente."
                 ),
             )
