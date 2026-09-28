@@ -36,6 +36,63 @@ class AIService:
             client.postgrest.auth(self.access_token)
         return client
 
+    def _fetch_actor_context(self, user_id: str, role: str) -> str:
+        """Monta a identidade mínima e o escopo autorizado da sessão."""
+        client = self._get_authenticated_client()
+
+        try:
+            response = (
+                client.table("profiles")
+                .select("id, first_name, last_name, role")
+                .eq("id", user_id)
+                .limit(1)
+                .execute()
+            )
+
+            profile = response.data[0] if response.data else {}
+            first_name = profile.get("first_name", "").strip()
+            last_name = profile.get("last_name", "").strip()
+            display_name = f"{first_name} {last_name}".strip() or "Usuário"
+
+            scopes = {
+                "super_admin": (
+                    "Visão global técnico-administrativa, limitada aos dados "
+                    "disponibilizados no contexto."
+                ),
+                "admin": (
+                    "Visão global de gestão de parceiros, apoiadores, metas "
+                    "e indicadores administrativos."
+                ),
+                "parceiro": (
+                    "Visão restrita à própria parceria, ao próprio link, às "
+                    "próprias metas e aos apoiadores vinculados ao seu cadastro."
+                ),
+                "supporter": (
+                    "Acesso somente a informações institucionais e projetos "
+                    "oficiais da campanha."
+                ),
+            }
+
+            scope = scopes.get(
+                role,
+                "Acesso restrito a informações institucionais presentes no contexto."
+            )
+
+            return (
+                "### SESSÃO AUTENTICADA\n"
+                f"- Usuário: {display_name}\n"
+                f"- Papel: {role}\n"
+                f"- Escopo autorizado: {scope}\n"
+                "- Responda somente com base neste escopo e nos dados fornecidos."
+            )
+
+        except Exception:
+            return (
+                "### SESSÃO AUTENTICADA\n"
+                f"- Papel: {role}\n"
+                "- Responda somente com dados institucionais e com o contexto disponível."
+            )
+
     def _fetch_business_context_for_role(self, user_id: str, role: str) -> str:
         """Monta o contexto gerencial e em tempo real do banco de dados específico para o papel."""
         client = self._get_authenticated_client()
@@ -112,9 +169,35 @@ class AIService:
                 partners = part_res.data or []
                 total_partners = len(partners)
 
+                admin_profiles_res = (
+                    client.table("profiles")
+                    .select("id, role", count="exact")
+                    .in_("role", ["admin", "super_admin"])
+                    .execute()
+                )
+
+                admin_profiles = admin_profiles_res.data or []
+                total_admins = sum(
+                    1 for profile in admin_profiles if profile.get("role") == "admin"
+                )
+                total_super_admins = sum(
+                    1 for profile in admin_profiles
+                    if profile.get("role") == "super_admin"
+                )
+                total_management_users = total_admins + total_super_admins
+
                 blocks.append("### PAINEL GERENCIAL DA CAMPANHA (VISÃO ADMIN):")
                 blocks.append(f"- Total Geral de Apoiadores Cadastrados na Campanha: {total_supporters}")
                 blocks.append(f"- Total de Parceiros Cadastrados no Sistema: {total_partners}")
+                blocks.append(
+                    f"- Total de Administradores cadastrados: {total_admins}"
+                )
+                blocks.append(
+                    f"- Total de Super Administradores cadastrados: {total_super_admins}"
+                )
+                blocks.append(
+                    f"- Total de usuários da gestão: {total_management_users}"
+                )
                 blocks.append("- Lista e desempenho recente dos parceiros:")
                 for p in partners[:10]:
                     prof = p.get("profiles") or {}
@@ -180,6 +263,16 @@ class AIService:
             documents.append({"title": f"DADOS DO SEU ACESSO ({role.upper()})", "content": business_context})
 
         system_prompt = build_system_prompt(documents)
+
+        actor_context = self._fetch_actor_context(user_id=user_id, role=role)
+
+        if actor_context:
+            documents.append(
+                {
+                    "title": "SESSÃO E ESCOPO AUTORIZADO",
+                    "content": actor_context,
+                }
+            )
 
         # 3. Adiciona instrução específica de postura gerencial
         role_instructions = (
