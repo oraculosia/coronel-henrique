@@ -266,10 +266,17 @@ for message in st.session_state["ai_chat_history"]:
 # -----------------------------------------------------------------------------
 _, clear_col = st.columns([3.5, 1.2])
 with clear_col:
-    if st.button("🗑️ Limpar Conversa", key="btn_clear_internal_chat", use_container_width=True):
-        st.session_state["ai_chat_history"] = []
-        st.session_state["history_cleared"] = True
-        st.rerun()
+    if st.button("Limpar conversa"):
+        ai_service = AIService(access_token=access_token)
+
+        result = ai_service.clear_own_history(user_id=profile["id"])
+
+        if result.success:
+            st.session_state.chat_history = []
+            st.success("Histórico apagado com sucesso.")
+            st.rerun()
+        else:
+            st.error(result.message)
 
 # -----------------------------------------------------------------------------
 # Campo de Entrada e Processamento com IA

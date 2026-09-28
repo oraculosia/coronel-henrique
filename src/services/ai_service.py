@@ -379,3 +379,29 @@ class AIService:
             return ServiceResult(success=True, message="ok", data=res.data or [])
         except Exception:
             return ServiceResult(success=True, message="ok", data=[])
+
+
+    def clear_own_history(self, user_id: str) -> ServiceResult:
+        """Exclui o histórico de conversas do próprio usuário autenticado."""
+        try:
+            client = self._get_authenticated_client()
+
+            response = (
+                client.table("ai_conversations")
+                .delete()
+                .eq("user_id", user_id)
+                .execute()
+            )
+
+            return ServiceResult(
+                success=True,
+                message="Histórico de conversas apagado.",
+                data=response.data or [],
+            )
+
+        except Exception:
+            return ServiceResult(
+                success=False,
+                message="Não foi possível apagar o histórico de conversas.",
+                data=[],
+            )
