@@ -143,44 +143,87 @@ if not partner_result.success:
 
 partner = partner_result.data
 partner_label = partner.get("campaign_message") or "esta campanha"
+
 st.caption(f"Você está se cadastrando com **{partner_label}**.")
 
-with st.form("supporter_signup_form"):
-    first_name = st.text_input("Nome", max_chars=100)
-    last_name = st.text_input("Sobrenome", max_chars=100)
-    whatsapp = st.text_input("WhatsApp", placeholder="(31) 99999-9999")
-    email = st.text_input("E-mail", placeholder="voce@email.com")
+with st.form("supporter_signup_form", clear_on_submit=False):
+    col_1, col_2 = st.columns(2)
+
+    with col_1:
+        first_name = st.text_input(
+            "Nome",
+            placeholder="Ex.: Maria",
+            max_chars=100,
+        )
+
+        last_name = st.text_input(
+            "Sobrenome",
+            placeholder="Ex.: Silva",
+            max_chars=100,
+        )
+
+    with col_2:
+        whatsapp = st.text_input(
+            "WhatsApp",
+            placeholder="999999999",
+            help=(
+                "Digite exatamente 9 números, sem DDD, espaços, "
+                "hífens ou parênteses."
+            ),
+            max_chars=9,
+        )
+
+        email = st.text_input(
+            "E-mail",
+            placeholder="voce@email.com",
+            max_chars=255,
+        )
+
     consent_lgpd = st.checkbox(
-        "Autorizo o uso dos meus dados para os fins desta campanha (LGPD)."
+        "Autorizo o uso dos meus dados para os fins desta campanha (LGPD).",
+        value=False,
     )
 
     submitted = st.form_submit_button(
-        "Confirmar cadastro", type="primary", use_container_width=True
+        "Confirmar cadastro",
+        type="primary",
+        use_container_width=True,
     )
 
 if submitted:
+    first_name = " ".join(first_name.split())
+    last_name = " ".join(last_name.split())
+    email_normalizado = email.strip().lower()
+    whatsapp_normalizado = "".join(
+        caractere for caractere in whatsapp if caractere.isdigit()
+    )
+
     errors: list[str] = []
 
-    if not first_name.strip():
+    if not first_name:
         errors.append("Informe seu nome.")
 
-    if not last_name.strip():
+    if not last_name:
         errors.append("Informe seu sobrenome.")
 
-    whatsapp_ok, whatsapp_result = validate_whatsapp(whatsapp)
-    if not whatsapp_ok:
-        errors.append(whatsapp_result)
+    if len(whatsapp_normalizado) != 9:
+        errors.append(
+            "Digite exatamente 9 números do WhatsApp, sem DDD, espaços ou símbolos."
+        )
 
-    email_ok, email_result = validate_email_address(email)
+    email_ok, email_result = validate_email_address(email_normalizado)
     if not email_ok:
         errors.append(f"E-mail inválido: {email_result}")
 
     if not consent_lgpd:
-        errors.append("É necessário autorizar o uso dos dados (LGPD) para continuar.")
+        errors.append(
+            "É necessário autorizar o uso dos dados (LGPD) para continuar."
+        )
 
     if errors:
         for error in errors:
             st.error(error)
+
     else:
         with st.spinner("Enviando seu cadastro..."):
             result = supporter_service.register_public(
@@ -188,15 +231,17 @@ if submitted:
                 slug=slug,
                 first_name=first_name,
                 last_name=last_name,
-                whatsapp=whatsapp_result,
-                email=email_result,
-                consent_lgpd=consent_lgpd,
+                whatsapp=whatsapp_normalizado,
+                email=email_normalizado,
+                consent_lgpd=True,
             )
 
         if not result.success:
             st.error(result.message)
+
         else:
             st.success(result.message)
+
             supporter = result.data or {}
 
             telegram = TelegramService()
@@ -206,9 +251,10 @@ if submitted:
                 supporter_id=supporter.get("id", ""),
                 first_name=first_name,
                 last_name=last_name,
-                phone=whatsapp_result,
-                email=email_result,
+                phone=whatsapp_normalizado,
+                email=email_normalizado,
             )
+
             telegram.notify_goal_if_reached(
                 partner_id=partner["id"],
                 partner_label=partner_label,
@@ -216,11 +262,12 @@ if submitted:
 
             try:
                 Notificador().enviar_boas_vindas_apoiador(
-                    destino=email_result,
+                    destino=email_normalizado,
                     nome_apoiador=first_name,
                     nome_parceiro=partner_label,
-                    link_cadastro_parceiro=f"{settings.APP_BASE_URL}/apoiar?p={slug}",
+                    link_cadastro_parceiro=(
+                        f"{settings.APP_BASE_URL}/apoiar?p={slug}"
+                    ),
                 )
             except Exception:
-                pass  # falha no envio do e-mail não deve impedir a confirmação do cadastro
-
+                pass
